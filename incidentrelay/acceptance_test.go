@@ -202,6 +202,14 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"priority": 100,
 		"enabled":  true,
 	})
+	testAccUpdateResource(t, ctx, resourceRotationLayer(), layerData, config, map[string]interface{}{
+		"description": "Updated acceptance layer.",
+		"priority":    200,
+	}, map[string]interface{}{
+		"description": "Updated acceptance layer.",
+		"priority":    200,
+		"enabled":     true,
+	})
 
 	layerMemberData := testAccCreateResource(t, ctx, resourceRotationLayerMember(), config, map[string]interface{}{
 		"layer_id":  layerID,
@@ -261,6 +269,16 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"target_id":     rotationID,
 		"enabled":       true,
 	})
+	testAccUpdateResource(t, ctx, resourceEscalationPolicyRule(), escalationPolicyRuleData, config, map[string]interface{}{
+		"delay_seconds": 600,
+		"enabled":       false,
+	}, map[string]interface{}{
+		"position":      1,
+		"delay_seconds": 600,
+		"target_type":   "rotation",
+		"target_id":     rotationID,
+		"enabled":       false,
+	})
 
 	notificationPolicyData := testAccCreateResource(t, ctx, resourceNotificationPolicy(), config, map[string]interface{}{
 		"team_id":     teamID,
@@ -289,6 +307,17 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"continue_matching": true,
 		"enabled":           true,
 	})
+	testAccUpdateResource(t, ctx, resourceNotificationPolicyRule(), notificationPolicyRuleData, config, map[string]interface{}{
+		"description":       "Updated notification rule.",
+		"position":          2,
+		"continue_matching": false,
+		"enabled":           false,
+	}, map[string]interface{}{
+		"description":       "Updated notification rule.",
+		"position":          2,
+		"continue_matching": false,
+		"enabled":           false,
+	})
 
 	serviceData := testAccCreateResource(t, ctx, resourceService(), config, map[string]interface{}{
 		"team_id":                      teamID,
@@ -311,6 +340,17 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"public":                       false,
 	})
 	serviceID := testAccIDAsInt(t, serviceData.Id())
+	testAccUpdateResource(t, ctx, resourceService(), serviceData, config, map[string]interface{}{
+		"description":    "Updated acceptance service.",
+		"criticality":    "critical",
+		"status":         "degraded",
+		"status_message": "Updated by acceptance test.",
+	}, map[string]interface{}{
+		"description":    "Updated acceptance service.",
+		"criticality":    "critical",
+		"status":         "degraded",
+		"status_message": "Updated by acceptance test.",
+	})
 
 	routeData := testAccCreateResource(t, ctx, resourceRoute(), config, map[string]interface{}{
 		"team_id":                   teamID,
@@ -329,6 +369,16 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		t.Fatalf("route escalation_mode = %q, want policy", got)
 	}
 	routeID := testAccIDAsInt(t, routeData.Id())
+	testAccUpdateResource(t, ctx, resourceRoute(), routeData, config, map[string]interface{}{
+		"name":                      "Acc route upd " + suffix,
+		"notification_channel_mode": "service_policy",
+		"enabled":                   true,
+	}, map[string]interface{}{
+		"name":                      "Acc route upd " + suffix,
+		"notification_channel_mode": "service_policy",
+		"enabled":                   true,
+		"escalation_mode":           "policy",
+	})
 
 	serviceMatchRuleData := testAccCreateResource(t, ctx, resourceServiceMatchRule(), config, map[string]interface{}{
 		"team_id":       teamID,
@@ -429,6 +479,29 @@ func testAccImportReadResource(t *testing.T, ctx context.Context, resource *sche
 	}
 
 	return data
+}
+
+func testAccUpdateResource(t *testing.T, ctx context.Context, resource *schema.Resource, data *schema.ResourceData, config *Config, updates map[string]interface{}, checks map[string]interface{}) {
+	t.Helper()
+
+	id := data.Id()
+	for field, value := range updates {
+		if err := data.Set(field, value); err != nil {
+			t.Fatalf("set %s: %v", field, err)
+		}
+	}
+
+	testAccRequireNoDiags(t, resource.UpdateWithoutTimeout(ctx, data, config))
+
+	if got := data.Id(); got != id {
+		t.Fatalf("id after update = %q, want %q", got, id)
+	}
+
+	for field, want := range checks {
+		if got := data.Get(field); !reflect.DeepEqual(got, want) {
+			t.Fatalf("updated %s = %#v, want %#v", field, got, want)
+		}
+	}
 }
 
 func testAccCleanupResource(t *testing.T, resource *schema.Resource, data *schema.ResourceData, config *Config) {
