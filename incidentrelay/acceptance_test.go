@@ -343,11 +343,13 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"criticality":    "critical",
 		"status":         "degraded",
 		"status_message": "Updated by acceptance test.",
+		"public_name":    "Acc public " + suffix,
 	}, map[string]interface{}{
 		"description":    "Updated acceptance service.",
 		"criticality":    "critical",
 		"status":         "degraded",
 		"status_message": "Updated by acceptance test.",
+		"public_name":    "Acc public " + suffix,
 	})
 
 	routeData := testAccCreateResource(t, ctx, resourceRoute(), config, map[string]interface{}{
