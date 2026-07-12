@@ -32,10 +32,10 @@ The acceptance workflow starts a real IncidentRelay container with Docker,
 creates a temporary admin user, and runs the provider acceptance tests with
 `INCIDENTRELAY_ACC=1`.
 
-The workflow first tries to pull `ghcr.io/roxy-wi/incidentrelay:1.1` after
+The workflow first tries to pull `ghcr.io/roxy-wi/incidentrelay:latest` after
 logging in to GHCR with `GITHUB_TOKEN` and `packages: read`. If the package is
 not readable by the provider repository, the workflow clones
-`roxy-wi/IncidentRelay` at `v1.1` and builds the same image locally on the
+`roxy-wi/IncidentRelay` at `main` and builds the same image locally on the
 runner. This keeps acceptance tests reproducible without requiring manual GHCR
 package access configuration.
 
