@@ -32,6 +32,10 @@ The acceptance workflow starts a real IncidentRelay container from
 `ghcr.io/roxy-wi/incidentrelay:1.1` with Docker, creates a temporary admin user,
 and runs the provider acceptance tests with `INCIDENTRELAY_ACC=1`.
 
+The workflow grants `packages: read` and logs in to GHCR with `GITHUB_TOKEN`
+before pulling the IncidentRelay image. This is required when the package is
+private or scoped to the GitHub organization.
+
 Acceptance tests are intentionally separate from the fast CI workflow because
 they pull a Docker image, run migrations, and exercise the live HTTP API.
 

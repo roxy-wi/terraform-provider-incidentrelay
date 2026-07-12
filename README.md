@@ -190,7 +190,9 @@ make test-acc
 ```
 
 GitHub Actions also includes an `Acceptance` workflow that starts
-`ghcr.io/roxy-wi/incidentrelay:1.1` with Docker and runs this test layer.
+`ghcr.io/roxy-wi/incidentrelay:1.1` with Docker and runs this test layer. The
+workflow authenticates to GHCR with the repository `GITHUB_TOKEN` and
+`packages: read` permission before pulling the image.
 
 ## Publishing to the Terraform Registry
 
