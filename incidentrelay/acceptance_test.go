@@ -378,18 +378,18 @@ func testAccSuffix() string {
 	return fmt.Sprintf("%x", time.Now().UnixNano())
 }
 
-func testAccIntSet(values ...int) *schema.Set {
+func testAccIntSet(values ...int) []interface{} {
 	items := make([]interface{}, 0, len(values))
 	for _, value := range values {
 		items = append(items, value)
 	}
-	return schema.NewSet(schema.HashInt, items)
+	return items
 }
 
-func testAccStringSet(values ...string) *schema.Set {
+func testAccStringSet(values ...string) []interface{} {
 	items := make([]interface{}, 0, len(values))
 	for _, value := range values {
 		items = append(items, value)
 	}
-	return schema.NewSet(schema.HashString, items)
+	return items
 }
