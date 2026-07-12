@@ -191,9 +191,9 @@ make test-acc
 
 GitHub Actions also includes an `Acceptance` workflow that starts
 IncidentRelay with Docker and runs this test layer. It tries to pull
-`ghcr.io/roxy-wi/incidentrelay:latest`; if the package is not readable by the
-provider repository, it builds the image from `roxy-wi/IncidentRelay@main` on the
-runner and uses that local image.
+`ghcr.io/roxy-wi/incidentrelay:latest` anonymously first, then retries after a
+GHCR login with `GITHUB_TOKEN`. If GHCR is still unavailable, it builds the image
+from `roxy-wi/IncidentRelay@main` on the runner and uses that local image.
 
 ## Publishing to the Terraform Registry
 

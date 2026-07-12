@@ -40,19 +40,27 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Log in to GHCR
-        continue-on-error: true
-        run: echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
-
       - name: Prepare IncidentRelay image
+        env:
+          GHCR_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
+          echo "Trying anonymous pull of $INCIDENTRELAY_REMOTE_IMAGE"
           if docker pull "$INCIDENTRELAY_REMOTE_IMAGE"; then
             docker tag "$INCIDENTRELAY_REMOTE_IMAGE" "$INCIDENTRELAY_IMAGE"
             exit 0
           fi
 
+          echo "Anonymous pull failed; retrying after GHCR login"
+          if printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin; then
+            if docker pull "$INCIDENTRELAY_REMOTE_IMAGE"; then
+              docker tag "$INCIDENTRELAY_REMOTE_IMAGE" "$INCIDENTRELAY_IMAGE"
+              exit 0
+            fi
+          fi
+
+          echo "GHCR pull failed; building IncidentRelay image locally"
           git clone --depth 1 --branch "$INCIDENTRELAY_SOURCE_REF" \
             https://github.com/roxy-wi/IncidentRelay.git \
             .incidentrelay-source
