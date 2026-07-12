@@ -25,7 +25,7 @@ The binary is written to `bin/terraform-provider-incidentrelay`.
 terraform {
   required_providers {
     incidentrelay = {
-      source  = "incidentrelay/incidentrelay"
+      source  = "roxy-wi/incidentrelay"
       version = "0.1.0"
     }
   }
@@ -97,10 +97,34 @@ make install-local
 This installs the provider under:
 
 ```text
-~/.terraform.d/plugins/registry.terraform.io/incidentrelay/incidentrelay/0.1.0/<os>_<arch>/
+~/.terraform.d/plugins/registry.terraform.io/roxy-wi/incidentrelay/0.1.0/<os>_<arch>/
 ```
 
 ## Example
 
 See [examples/provider/example.tf](examples/provider/example.tf).
 
+## Publishing to the Terraform Registry
+
+The GitHub repository must be public and named `terraform-provider-incidentrelay`.
+The release workflow builds Registry-compatible zip assets, adds
+`terraform-provider-incidentrelay_<version>_manifest.json`, generates
+`terraform-provider-incidentrelay_<version>_SHA256SUMS`, and signs checksums with
+GPG.
+
+The release workflow expects these GitHub Actions secrets, which are already
+configured in the `roxy-wi/terraform-provider-incidentrelay` repository:
+
+- `GPG_PRIVATE_KEY`: ASCII-armored private key used only for provider releases.
+- `PASSPHRASE`: passphrase for that key.
+
+Add the corresponding ASCII-armored public key in Terraform Registry settings for
+the `roxy-wi` namespace. Then create and push a semver tag:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+After the GitHub release is published, use Terraform Registry's `Publish >
+Provider` flow and select `roxy-wi/terraform-provider-incidentrelay`.

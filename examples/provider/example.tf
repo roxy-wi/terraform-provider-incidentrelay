@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     incidentrelay = {
-      source  = "incidentrelay/incidentrelay"
+      source  = "roxy-wi/incidentrelay"
       version = "0.1.0"
     }
   }
@@ -84,4 +84,3 @@ resource "incidentrelay_service" "api" {
     owner = "platform"
   })
 }
-

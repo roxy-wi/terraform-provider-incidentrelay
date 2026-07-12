@@ -4,7 +4,8 @@ import (
 	"flag"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
-	"terraform-provider-IncidentRelay/incidentrelay"
+
+	"github.com/roxy-wi/terraform-provider-incidentrelay/incidentrelay"
 )
 
 func main() {
@@ -12,7 +13,7 @@ func main() {
 	var address string
 
 	flag.BoolVar(&debug, "debug", false, "set to true to run the provider with debugger support")
-	flag.StringVar(&address, "address", "registry.terraform.io/incidentrelay/incidentrelay", "provider address used for debugging")
+	flag.StringVar(&address, "address", "registry.terraform.io/roxy-wi/incidentrelay", "provider address used for debugging")
 	flag.Parse()
 
 	plugin.Serve(&plugin.ServeOpts{

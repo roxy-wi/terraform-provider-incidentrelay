@@ -1,4 +1,4 @@
-module terraform-provider-IncidentRelay
+module github.com/roxy-wi/terraform-provider-incidentrelay
 
 go 1.22.5
 

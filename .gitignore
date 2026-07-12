@@ -1,4 +1,5 @@
 bin/
+dist/
 .terraform/
 .terraform.lock.hcl
 terraform.tfstate
@@ -6,4 +7,4 @@ terraform.tfstate.backup
 *.tfvars
 *.tfvars.json
 .DS_Store
-
+.registry-release/

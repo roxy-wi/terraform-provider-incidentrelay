@@ -11,6 +11,19 @@ provider "incidentrelay" {
 }
 ```
 
+Provider source address:
+
+```hcl
+terraform {
+  required_providers {
+    incidentrelay = {
+      source  = "roxy-wi/incidentrelay"
+      version = "0.1.0"
+    }
+  }
+}
+```
+
 Nested API configuration is represented as JSON strings:
 
 ```hcl
@@ -19,4 +32,3 @@ config_json = jsonencode({
   notify_on_severities = ["critical", "high"]
 })
 ```
-

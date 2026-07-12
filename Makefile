@@ -1,7 +1,7 @@
 BINARY_NAME ?= terraform-provider-incidentrelay
 VERSION ?= 0.1.0
 HOSTNAME ?= registry.terraform.io
-NAMESPACE ?= incidentrelay
+NAMESPACE ?= roxy-wi
 TYPE ?= incidentrelay
 OS_ARCH := $(shell go env GOOS)_$(shell go env GOARCH)
 INSTALL_DIR := $(HOME)/.terraform.d/plugins/$(HOSTNAME)/$(NAMESPACE)/$(TYPE)/$(VERSION)/$(OS_ARCH)
@@ -26,4 +26,3 @@ install-local: build
 
 clean:
 	rm -rf bin
-
