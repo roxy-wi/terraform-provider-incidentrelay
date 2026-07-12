@@ -48,60 +48,82 @@ func TestProviderInternalValidate(t *testing.T) {
 }
 
 func TestCommonFieldLengthValidation(t *testing.T) {
-	resource := resourceGroup()
-	tests := []struct {
-		name    string
-		field   string
-		value   string
-		wantErr bool
+	expectations := map[string]struct {
+		allowed string
+		invalid string
+		emptyOK bool
 	}{
-		{
-			name:  "name allows 40 characters",
-			field: "name",
-			value: strings.Repeat("n", nameSlugMaxLength),
+		"name": {
+			allowed: strings.Repeat("n", nameSlugMaxLength),
+			invalid: strings.Repeat("n", nameSlugMaxLength+1),
 		},
-		{
-			name:    "name rejects 41 characters",
-			field:   "name",
-			value:   strings.Repeat("n", nameSlugMaxLength+1),
-			wantErr: true,
+		"slug": {
+			allowed: strings.Repeat("s", nameSlugMaxLength),
+			invalid: strings.Repeat("s", nameSlugMaxLength+1),
 		},
-		{
-			name:  "slug allows 40 characters",
-			field: "slug",
-			value: strings.Repeat("s", nameSlugMaxLength),
-		},
-		{
-			name:    "slug rejects 41 characters",
-			field:   "slug",
-			value:   strings.Repeat("s", nameSlugMaxLength+1),
-			wantErr: true,
-		},
-		{
-			name:  "description allows 120 characters",
-			field: "description",
-			value: strings.Repeat("d", descriptionMaxLength),
-		},
-		{
-			name:    "description rejects 121 characters",
-			field:   "description",
-			value:   strings.Repeat("d", descriptionMaxLength+1),
-			wantErr: true,
+		"description": {
+			allowed: strings.Repeat("d", descriptionMaxLength),
+			invalid: strings.Repeat("d", descriptionMaxLength+1),
+			emptyOK: true,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			validate := resource.Schema[tt.field].ValidateFunc
-			if validate == nil {
-				t.Fatalf("%s has no ValidateFunc", tt.field)
+	checked := 0
+	for resourceName, resource := range Provider().ResourcesMap {
+		for fieldName, expectation := range expectations {
+			field, ok := resource.Schema[fieldName]
+			if !ok || field.Type != schema.TypeString || (!field.Required && !field.Optional) {
+				continue
 			}
+			checked++
+			t.Run(resourceName+"."+fieldName, func(t *testing.T) {
+				validate := field.ValidateFunc
+				if validate == nil {
+					t.Fatal("ValidateFunc is nil")
+				}
 
-			_, errors := validate(tt.value, tt.field)
-			if gotErr := len(errors) > 0; gotErr != tt.wantErr {
-				t.Fatalf("validation errors = %v, wantErr %v", errors, tt.wantErr)
+				if _, errors := validate(expectation.allowed, fieldName); len(errors) > 0 {
+					t.Fatalf("allowed value errors = %v", errors)
+				}
+				if _, errors := validate(expectation.invalid, fieldName); len(errors) == 0 {
+					t.Fatal("invalid long value returned no errors")
+				}
+				if _, errors := validate("", fieldName); (len(errors) == 0) != expectation.emptyOK {
+					t.Fatalf("empty value errors = %v, emptyOK %v", errors, expectation.emptyOK)
+				}
+			})
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no common string fields were checked")
+	}
+}
+
+func TestJSONFieldValidationRejectsInvalidJSON(t *testing.T) {
+	checked := 0
+	for resourceName, resource := range Provider().ResourcesMap {
+		for fieldName, field := range resource.Schema {
+			if !strings.HasSuffix(fieldName, "_json") || field.Type != schema.TypeString || field.Computed {
+				continue
 			}
-		})
+			checked++
+			t.Run(resourceName+"."+fieldName, func(t *testing.T) {
+				validate := field.ValidateFunc
+				if validate == nil {
+					t.Fatal("ValidateFunc is nil")
+				}
+
+				if _, errors := validate(`{"ok":true}`, fieldName); len(errors) > 0 {
+					t.Fatalf("valid JSON errors = %v", errors)
+				}
+				if _, errors := validate("{broken", fieldName); len(errors) == 0 {
+					t.Fatal("invalid JSON returned no errors")
+				}
+			})
+		}
+	}
+	if checked == 0 {
+		t.Fatal("no JSON fields were checked")
 	}
 }
 

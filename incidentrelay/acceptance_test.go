@@ -616,6 +616,105 @@ func TestAccIncidentRelayRouteBehavior(t *testing.T) {
 	testAccRequireAPIStringListField(t, updatedRouteAPI, "group_by", "route_id", "source")
 }
 
+func TestAccIncidentRelayNegativeValidation(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	invalidGroupData := schema.TestResourceDataRaw(t, resourceGroup().Schema, map[string]interface{}{
+		"slug":        "BadSlug-" + suffix,
+		"name":        "Invalid group " + suffix,
+		"description": "This group should be rejected by API validation.",
+		"active":      true,
+	})
+	testAccRequireDiagsContain(t, resourceGroup().CreateWithoutTimeout(ctx, invalidGroupData, config),
+		"POST /api/groups returned 400",
+		"validation_error",
+		"slug",
+	)
+	if got := invalidGroupData.Id(); got != "" {
+		t.Fatalf("invalid group id = %q, want empty", got)
+	}
+
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tfneg-g-" + suffix,
+		"name":        "Neg group " + suffix,
+		"description": "Negative validation acceptance group.",
+		"active":      true,
+	})
+	teamData := testAccCreateResource(t, ctx, resourceTeam(), config, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, groupData.Id()),
+		"slug":                       "tfneg-t-" + suffix,
+		"name":                       "Neg team " + suffix,
+		"description":                "Negative validation acceptance team.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 2,
+		"active":                     true,
+	})
+	teamID := testAccIDAsInt(t, teamData.Id())
+
+	invalidTeamData := schema.TestResourceDataRaw(t, resourceTeam().Schema, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, groupData.Id()),
+		"slug":                       "tfneg-bad-" + suffix,
+		"name":                       "Neg bad team " + suffix,
+		"description":                "This team should be rejected by API validation.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 101,
+		"active":                     true,
+	})
+	testAccRequireDiagsContain(t, resourceTeam().CreateWithoutTimeout(ctx, invalidTeamData, config),
+		"POST /api/teams returned 400",
+		"validation_error",
+		"escalation_after_reminders",
+	)
+	if got := invalidTeamData.Id(); got != "" {
+		t.Fatalf("invalid team id = %q, want empty", got)
+	}
+
+	invalidServiceData := schema.TestResourceDataRaw(t, resourceService().Schema, map[string]interface{}{
+		"team_id":       teamID,
+		"slug":          "tfneg-s-" + suffix,
+		"name":          "Neg service " + suffix,
+		"description":   "This service should be rejected by API validation.",
+		"service_type":  "api",
+		"environment":   "test",
+		"criticality":   "medium",
+		"tier":          "tier_3",
+		"status":        "operational",
+		"status_source": "manual",
+		"labels_json":   `{}`,
+		"metadata_json": `{}`,
+		"enabled":       true,
+		"public":        false,
+	})
+	testAccRequireDiagsContain(t, resourceService().CreateWithoutTimeout(ctx, invalidServiceData, config),
+		"POST /api/services returned 400",
+		"validation_error",
+		"environment",
+	)
+	if got := invalidServiceData.Id(); got != "" {
+		t.Fatalf("invalid service id = %q, want empty", got)
+	}
+
+	invalidRouteData := schema.TestResourceDataRaw(t, resourceRoute().Schema, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Neg route " + suffix,
+		"source":                    "prometheus",
+		"notification_channel_mode": "route_only",
+		"matchers_json":             `{}`,
+		"integration_config_json":   `{}`,
+		"enabled":                   true,
+	})
+	testAccRequireDiagsContain(t, resourceRoute().CreateWithoutTimeout(ctx, invalidRouteData, config),
+		"POST /api/routes returned 400",
+		"validation_error",
+		"source",
+	)
+	if got := invalidRouteData.Id(); got != "" {
+		t.Fatalf("invalid route id = %q, want empty", got)
+	}
+}
+
 func TestAccIncidentRelayDriftAndReadAfterDelete(t *testing.T) {
 	config := testAccProviderConfig(t)
 	ctx := context.Background()
@@ -1025,6 +1124,20 @@ func testAccRequireNoDiags(t *testing.T, diags diag.Diagnostics) {
 
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+}
+
+func testAccRequireDiagsContain(t *testing.T, diags diag.Diagnostics, fragments ...string) {
+	t.Helper()
+
+	if !diags.HasError() {
+		t.Fatal("expected diagnostics, got none")
+	}
+	text := fmt.Sprint(diags)
+	for _, fragment := range fragments {
+		if !strings.Contains(text, fragment) {
+			t.Fatalf("diagnostics = %v, want fragment %q", diags, fragment)
+		}
 	}
 }
 
