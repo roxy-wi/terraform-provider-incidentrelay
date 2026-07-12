@@ -62,7 +62,7 @@ func resourceServiceMatchRule() *schema.Resource {
 		Description:  "IncidentRelay service match rule.",
 		Fields:       fields,
 		CreatePath:   fieldCreatePath("/api/services/%d/match-rules", "service_id"),
-		ReadListPath: createPath("/api/services/match-rules"),
+		ReadListPath: fieldListPath("/api/services/%d/match-rules", "service_id"),
 		UpdatePath:   idPath("/api/services/match-rules/%s"),
 		DeletePath:   idPath("/api/services/match-rules/%s"),
 		CreateFields: []string{"team_id", "service_id", "route_id", "position", "name", "description", "matchers_json", "enabled"},
