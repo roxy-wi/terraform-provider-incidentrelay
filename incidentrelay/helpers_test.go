@@ -26,6 +26,122 @@ func TestNormalizeJSONString(t *testing.T) {
 	}
 }
 
+func TestNormalizeJSONStringCanonicalForms(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "nested objects and arrays",
+			raw: `{
+				"z": [3, {"b": true, "a": false}],
+				"a": {"b": 2, "a": 1}
+			}`,
+			want: `{"a":{"a":1,"b":2},"z":[3,{"a":false,"b":true}]}`,
+		},
+		{
+			name: "array order is preserved",
+			raw:  `[{"b":2,"a":1},{"d":4,"c":3}]`,
+			want: `[{"a":1,"b":2},{"c":3,"d":4}]`,
+		},
+		{
+			name: "scalar json is compacted",
+			raw:  ` " keep spacing inside string " `,
+			want: `" keep spacing inside string "`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := normalizeJSONString(tt.raw)
+			if err != nil {
+				t.Fatalf("normalizeJSONString returned error: %v", err)
+			}
+			if got != tt.want {
+				t.Fatalf("normalizeJSONString = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNormalizeJSONStringState(t *testing.T) {
+	if got, want := normalizeJSONStringState(` { "b": 2, "a": 1 } `), `{"a":1,"b":2}`; got != want {
+		t.Fatalf("normalizeJSONStringState valid = %q, want %q", got, want)
+	}
+	if got, want := normalizeJSONStringState("{broken"), "{broken"; got != want {
+		t.Fatalf("normalizeJSONStringState invalid = %q, want original %q", got, want)
+	}
+	if got := normalizeJSONStringState(map[string]interface{}{"a": 1}); got != "" {
+		t.Fatalf("normalizeJSONStringState non-string = %q, want empty", got)
+	}
+}
+
+func TestJSONStringToValue(t *testing.T) {
+	if got, err := jsonStringToValue(" \n\t "); err != nil || got != nil {
+		t.Fatalf("jsonStringToValue empty = %#v, %v; want nil nil", got, err)
+	}
+
+	got, err := jsonStringToValue(` { "items": [ {"b": 2, "a": 1 } ], "enabled": true } `)
+	if err != nil {
+		t.Fatalf("jsonStringToValue object returned error: %v", err)
+	}
+	want := map[string]interface{}{
+		"enabled": true,
+		"items": []interface{}{
+			map[string]interface{}{"a": float64(1), "b": float64(2)},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("jsonStringToValue object = %#v, want %#v", got, want)
+	}
+
+	if _, err := jsonStringToValue("{broken"); err == nil {
+		t.Fatal("jsonStringToValue invalid returned nil error")
+	}
+}
+
+func TestValueToJSONStringCanonicalizesAPIValues(t *testing.T) {
+	if got, err := valueToJSONString(nil); err != nil || got != "" {
+		t.Fatalf("valueToJSONString nil = %q, %v; want empty nil", got, err)
+	}
+
+	got, err := valueToJSONString(map[string]interface{}{
+		"z": []interface{}{
+			map[string]interface{}{"b": false, "a": true},
+		},
+		"a": map[string]interface{}{"b": float64(2), "a": float64(1)},
+	})
+	if err != nil {
+		t.Fatalf("valueToJSONString returned error: %v", err)
+	}
+	if want := `{"a":{"a":1,"b":2},"z":[{"a":true,"b":false}]}`; got != want {
+		t.Fatalf("valueToJSONString = %q, want %q", got, want)
+	}
+}
+
+func TestSchemaJSONStateFuncNormalizesConfig(t *testing.T) {
+	fields := []fieldDef{
+		reqJSON("config_json", "config", "Config."),
+		computedJSON("computed_json", "computed", "Computed."),
+	}
+	schemaMap := schemaFromFields(fields)
+
+	stateFunc := schemaMap["config_json"].StateFunc
+	if stateFunc == nil {
+		t.Fatal("config_json StateFunc is nil")
+	}
+	if got, want := stateFunc(` { "b": 2, "a": 1 } `), `{"a":1,"b":2}`; got != want {
+		t.Fatalf("config_json StateFunc = %q, want %q", got, want)
+	}
+	if got, want := stateFunc("{broken"), "{broken"; got != want {
+		t.Fatalf("config_json StateFunc invalid = %q, want original %q", got, want)
+	}
+	if schemaMap["computed_json"].StateFunc != nil {
+		t.Fatal("computed_json StateFunc is set")
+	}
+}
+
 func TestInterfaceToID(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -149,6 +265,29 @@ func TestSetFieldsFromResponseConvertsFieldKinds(t *testing.T) {
 	}
 	assertSetElements(t, data.Get("tags").(*schema.Set), []interface{}{"api", "prod"})
 	assertSetElements(t, data.Get("numbers").(*schema.Set), []interface{}{1, 2})
+}
+
+func TestSetFieldsFromResponseUsesJSONDefaultForNil(t *testing.T) {
+	fields := []fieldDef{
+		optJSONDefault("labels_json", "labels", "{}", "Labels."),
+		computedJSON("metadata_json", "metadata", "Metadata."),
+	}
+	data := schema.TestResourceDataRaw(t, schemaFromFields(fields), map[string]interface{}{})
+
+	err := setFieldsFromResponse(data, fields, []string{"labels_json", "metadata_json"}, map[string]interface{}{
+		"labels":   nil,
+		"metadata": nil,
+	})
+	if err != nil {
+		t.Fatalf("setFieldsFromResponse returned error: %v", err)
+	}
+
+	if got, want := data.Get("labels_json"), "{}"; got != want {
+		t.Fatalf("labels_json = %v, want %v", got, want)
+	}
+	if got, want := data.Get("metadata_json"), ""; got != want {
+		t.Fatalf("metadata_json = %v, want empty %v", got, want)
+	}
 }
 
 func sameElements(got []interface{}, want []interface{}) bool {
