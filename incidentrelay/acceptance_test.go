@@ -309,12 +309,10 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 	testAccUpdateResource(t, ctx, resourceNotificationPolicyRule(), notificationPolicyRuleData, config, map[string]interface{}{
 		"description":       "Updated notification rule.",
-		"position":          2,
 		"continue_matching": false,
 		"enabled":           false,
 	}, map[string]interface{}{
 		"description":       "Updated notification rule.",
-		"position":          2,
 		"continue_matching": false,
 		"enabled":           false,
 	})
