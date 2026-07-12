@@ -1,6 +1,11 @@
-# incidentrelay_notification_policy_rule
+---
+page_title: "incidentrelay_notification_policy_rule Resource - IncidentRelay"
+subcategory: "Policies"
+description: |-
+  Manages a rule inside a service notification policy.
+---
 
-Manages a rule inside a service notification policy.
+# incidentrelay_notification_policy_rule
 
 ```hcl
 resource "incidentrelay_notification_policy_rule" "critical" {
@@ -15,3 +20,13 @@ resource "incidentrelay_notification_policy_rule" "critical" {
 }
 ```
 
+## Import
+
+Keep `policy_id` in configuration before importing.
+
+```sh
+terraform import incidentrelay_notification_policy_rule.critical 61
+```
+
+See [JSON fields guide](../guides/json-fields.md) and
+[resource reference](../guides/resource-reference.md#incidentrelay_notification_policy_rule).

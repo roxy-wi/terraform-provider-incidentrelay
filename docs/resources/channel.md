@@ -1,6 +1,11 @@
-# incidentrelay_channel
+---
+page_title: "incidentrelay_channel Resource - IncidentRelay"
+subcategory: "Notifications"
+description: |-
+  Manages an outbound notification channel.
+---
 
-Manages an outbound notification channel.
+# incidentrelay_channel
 
 ```hcl
 resource "incidentrelay_channel" "email" {
@@ -11,3 +16,11 @@ resource "incidentrelay_channel" "email" {
 }
 ```
 
+## Import
+
+```sh
+terraform import incidentrelay_channel.email 20
+```
+
+See [JSON fields guide](../guides/json-fields.md) and
+[resource reference](../guides/resource-reference.md#incidentrelay_channel).

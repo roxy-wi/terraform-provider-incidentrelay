@@ -1,6 +1,11 @@
-# incidentrelay_rotation
+---
+page_title: "incidentrelay_rotation Resource - IncidentRelay"
+subcategory: "On-call"
+description: |-
+  Manages an IncidentRelay on-call rotation.
+---
 
-Manages an IncidentRelay on-call rotation.
+# incidentrelay_rotation
 
 ```hcl
 resource "incidentrelay_rotation" "primary" {
@@ -17,3 +22,11 @@ resource "incidentrelay_rotation" "primary" {
 }
 ```
 
+## Import
+
+```sh
+terraform import incidentrelay_rotation.primary 40
+```
+
+See [resource reference](../guides/resource-reference.md#incidentrelay_rotation)
+for all arguments and attributes.

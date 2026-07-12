@@ -1,6 +1,11 @@
-# incidentrelay_service_match_rule
+---
+page_title: "incidentrelay_service_match_rule Resource - IncidentRelay"
+subcategory: "Service Catalog"
+description: |-
+  Manages a service match rule that maps incoming alerts to a service.
+---
 
-Manages a service match rule that maps incoming alerts to a service.
+# incidentrelay_service_match_rule
 
 ```hcl
 resource "incidentrelay_service_match_rule" "api" {
@@ -16,3 +21,13 @@ resource "incidentrelay_service_match_rule" "api" {
 }
 ```
 
+## Import
+
+Keep `service_id` in configuration before importing.
+
+```sh
+terraform import incidentrelay_service_match_rule.api 71
+```
+
+See [JSON fields guide](../guides/json-fields.md) and
+[resource reference](../guides/resource-reference.md#incidentrelay_service_match_rule).

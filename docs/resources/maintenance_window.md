@@ -1,6 +1,11 @@
-# incidentrelay_maintenance_window
+---
+page_title: "incidentrelay_maintenance_window Resource - IncidentRelay"
+subcategory: "Operations"
+description: |-
+  Manages a maintenance window.
+---
 
-Manages a maintenance window.
+# incidentrelay_maintenance_window
 
 `scopes_json` is a JSON array of IncidentRelay maintenance scopes.
 
@@ -20,3 +25,11 @@ resource "incidentrelay_maintenance_window" "deploy" {
 }
 ```
 
+## Import
+
+```sh
+terraform import incidentrelay_maintenance_window.deploy 81
+```
+
+See [JSON fields guide](../guides/json-fields.md) and
+[resource reference](../guides/resource-reference.md#incidentrelay_maintenance_window).

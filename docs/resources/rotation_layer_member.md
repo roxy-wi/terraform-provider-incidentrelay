@@ -1,6 +1,11 @@
-# incidentrelay_rotation_layer_member
+---
+page_title: "incidentrelay_rotation_layer_member Resource - IncidentRelay"
+subcategory: "On-call"
+description: |-
+  Manages a member period in a rotation layer.
+---
 
-Manages a member period in a rotation layer.
+# incidentrelay_rotation_layer_member
 
 ```hcl
 resource "incidentrelay_rotation_layer_member" "alice" {
@@ -10,3 +15,12 @@ resource "incidentrelay_rotation_layer_member" "alice" {
 }
 ```
 
+## Import
+
+Keep `layer_id` in configuration before importing.
+
+```sh
+terraform import incidentrelay_rotation_layer_member.alice 42
+```
+
+See [resource reference](../guides/resource-reference.md#incidentrelay_rotation_layer_member).

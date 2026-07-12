@@ -1,6 +1,9 @@
 # Terraform Provider for IncidentRelay
 
-Terraform provider for managing IncidentRelay configuration as code.
+Terraform provider for managing IncidentRelay configuration as code: access
+groups, users, teams, notification channels, alert routes, on-call rotations,
+escalation and notification policies, service catalog objects, silences,
+maintenance windows, heartbeats, and business services.
 
 The provider talks to the IncidentRelay HTTP API and supports both personal/API
 Bearer tokens and username/password login.
@@ -11,31 +14,50 @@ Bearer tokens and username/password login.
 - Go 1.22.5+ to build locally
 - IncidentRelay API access with permissions for the resources you manage
 
-## Build
-
-```sh
-make build
-```
-
-The binary is written to `bin/terraform-provider-incidentrelay`.
-
-## Provider Configuration
+## Quick Start
 
 ```hcl
 terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "0.1.0"
+      version = "~> 0.1"
     }
   }
+}
+
+variable "incidentrelay_token" {
+  type      = string
+  sensitive = true
 }
 
 provider "incidentrelay" {
   base_url = "https://incidentrelay.example.com"
   token    = var.incidentrelay_token
 }
+
+resource "incidentrelay_group" "infra" {
+  slug = "infra"
+  name = "Infrastructure"
+}
+
+resource "incidentrelay_team" "platform" {
+  group_id = incidentrelay_group.infra.id
+  slug     = "platform"
+  name     = "Platform"
+}
 ```
+
+Run:
+
+```sh
+export INCIDENTRELAY_TOKEN="..."
+terraform init
+terraform plan
+terraform apply
+```
+
+## Provider Configuration
 
 Environment variables are also supported:
 
@@ -47,6 +69,17 @@ Environment variables are also supported:
 
 Prefer `INCIDENTRELAY_TOKEN` for CI and automation. `username` and `password`
 are useful for local development.
+
+```hcl
+provider "incidentrelay" {
+  base_url = var.incidentrelay_base_url
+  username = var.incidentrelay_username
+  password = var.incidentrelay_password
+}
+```
+
+Set `insecure_skip_tls_verify = true` only for local development against a test
+IncidentRelay instance with a self-signed certificate.
 
 ## Supported Resources
 
@@ -88,6 +121,38 @@ Nested API objects such as channel `config`, route `matchers`, service
 validated JSON strings. This keeps the provider compatible with IncidentRelay's
 matcher and integration DSL without forcing every nested field into Terraform.
 
+Use `jsonencode(...)` for those fields:
+
+```hcl
+matchers_json = jsonencode({
+  labels = {
+    service     = "platform-api"
+    environment = "production"
+  }
+})
+```
+
+## Examples
+
+- [Provider quickstart](examples/provider/example.tf)
+- [Authentication patterns](examples/authentication/main.tf)
+- [Core on-call setup](examples/core-oncall/main.tf)
+- [Service catalog](examples/service-catalog/main.tf)
+- [Maintenance and silences](examples/maintenance/main.tf)
+- [Heartbeat monitoring](examples/heartbeat/main.tf)
+- [Data source lookups](examples/data-sources/main.tf)
+- [Terraform import blocks](examples/imports/main.tf)
+
+## Documentation
+
+- [Provider docs](docs/index.md)
+- [Authentication guide](docs/guides/authentication.md)
+- [Import guide](docs/guides/importing.md)
+- [JSON fields guide](docs/guides/json-fields.md)
+- [Modeling guide](docs/guides/modeling.md)
+- [Resource reference](docs/guides/resource-reference.md)
+- [Testing and release guide](docs/guides/testing-and-release.md)
+
 ## Local Installation
 
 ```sh
@@ -103,6 +168,16 @@ This installs the provider under:
 ## Example
 
 See [examples/provider/example.tf](examples/provider/example.tf).
+
+## Development
+
+```sh
+make fmt-check
+make test-race
+make build
+```
+
+The CI workflow runs the same checks on pull requests and pushes to `main`.
 
 ## Publishing to the Terraform Registry
 
@@ -122,8 +197,8 @@ Add the corresponding ASCII-armored public key in Terraform Registry settings fo
 the `roxy-wi` namespace. Then create and push a semver tag:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.1.2
+git push origin v0.1.2
 ```
 
 After the GitHub release is published, use Terraform Registry's `Publish >

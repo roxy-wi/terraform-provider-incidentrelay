@@ -2,18 +2,25 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "0.1.0"
+      version = "~> 0.1"
     }
   }
 }
 
+variable "incidentrelay_base_url" {
+  type        = string
+  description = "IncidentRelay base URL."
+  default     = "http://localhost:5000"
+}
+
 variable "incidentrelay_token" {
-  type      = string
-  sensitive = true
+  type        = string
+  description = "IncidentRelay API token."
+  sensitive   = true
 }
 
 provider "incidentrelay" {
-  base_url = "http://localhost:5000"
+  base_url = var.incidentrelay_base_url
   token    = var.incidentrelay_token
 }
 
@@ -83,4 +90,16 @@ resource "incidentrelay_service" "api" {
   labels_json = jsonencode({
     owner = "platform"
   })
+}
+
+output "group_id" {
+  value = incidentrelay_group.infra.id
+}
+
+output "team_id" {
+  value = incidentrelay_team.platform.id
+}
+
+output "route_intake_token_prefix" {
+  value = incidentrelay_route.alertmanager.intake_token_prefix
 }

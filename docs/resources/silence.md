@@ -1,6 +1,11 @@
-# incidentrelay_silence
+---
+page_title: "incidentrelay_silence Resource - IncidentRelay"
+subcategory: "Operations"
+description: |-
+  Manages a temporary alert silence.
+---
 
-Manages a temporary alert silence.
+# incidentrelay_silence
 
 ```hcl
 resource "incidentrelay_silence" "maintenance" {
@@ -17,3 +22,11 @@ resource "incidentrelay_silence" "maintenance" {
 }
 ```
 
+## Import
+
+```sh
+terraform import incidentrelay_silence.maintenance 80
+```
+
+See [JSON fields guide](../guides/json-fields.md) and
+[resource reference](../guides/resource-reference.md#incidentrelay_silence).

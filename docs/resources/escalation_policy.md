@@ -1,6 +1,11 @@
-# incidentrelay_escalation_policy
+---
+page_title: "incidentrelay_escalation_policy Resource - IncidentRelay"
+subcategory: "Policies"
+description: |-
+  Manages an IncidentRelay escalation policy.
+---
 
-Manages an IncidentRelay escalation policy.
+# incidentrelay_escalation_policy
 
 ```hcl
 resource "incidentrelay_escalation_policy" "critical" {
@@ -10,3 +15,10 @@ resource "incidentrelay_escalation_policy" "critical" {
 }
 ```
 
+## Import
+
+```sh
+terraform import incidentrelay_escalation_policy.critical 50
+```
+
+See [resource reference](../guides/resource-reference.md#incidentrelay_escalation_policy).
