@@ -67,8 +67,10 @@ func schemaFromFields(fields []fieldDef) map[string]*schema.Schema {
 			item.Type = schema.TypeBool
 		case kindJSON:
 			item.Type = schema.TypeString
-			item.StateFunc = normalizeJSONStringState
-			item.ValidateFunc = validation.StringIsJSON
+			if !field.Computed || field.Optional || field.Required {
+				item.StateFunc = normalizeJSONStringState
+				item.ValidateFunc = validation.StringIsJSON
+			}
 		case kindStringSet:
 			item.Type = schema.TypeSet
 			item.Elem = &schema.Schema{Type: schema.TypeString}
