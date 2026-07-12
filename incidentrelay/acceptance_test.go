@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -409,6 +410,136 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 }
 
+func TestAccIncidentRelayDriftAndReadAfterDelete(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupResource := resourceGroup()
+	groupData := testAccCreateResource(t, ctx, groupResource, config, map[string]interface{}{
+		"slug":        "tfdrift-g-" + suffix,
+		"name":        "Drift group " + suffix,
+		"description": "Created before external drift.",
+		"active":      true,
+	})
+	groupID := groupData.Id()
+	groupName := "Drift group upd " + suffix
+	groupDescription := "Updated outside Terraform."
+	if err := config.Client.Do(ctx, http.MethodPut, fmt.Sprintf("/api/groups/%s", groupID), map[string]interface{}{
+		"slug":        groupData.Get("slug"),
+		"name":        groupName,
+		"description": groupDescription,
+		"active":      true,
+	}, nil); err != nil {
+		t.Fatalf("external group update failed: %v", err)
+	}
+
+	testAccRequireNoDiags(t, groupResource.ReadWithoutTimeout(ctx, groupData, config))
+	if got, want := groupData.Id(), groupID; got != want {
+		t.Fatalf("group id after drift read = %q, want %q", got, want)
+	}
+	if got := groupData.Get("name"); got != groupName {
+		t.Fatalf("drifted group name = %#v, want %#v", got, groupName)
+	}
+	if got := groupData.Get("description"); got != groupDescription {
+		t.Fatalf("drifted group description = %#v, want %#v", got, groupDescription)
+	}
+
+	if err := config.Client.Do(ctx, http.MethodDelete, fmt.Sprintf("/api/groups/%s", groupID), nil, nil); err != nil {
+		t.Fatalf("external group delete failed: %v", err)
+	}
+	testAccRequireReadAfterExternalDelete(t, ctx, groupResource, groupData, config)
+
+	parentGroupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tfdrift-p-" + suffix,
+		"name":        "Drift parent " + suffix,
+		"description": "Parent for path-backed drift tests.",
+		"active":      true,
+	})
+	teamData := testAccCreateResource(t, ctx, resourceTeam(), config, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, parentGroupData.Id()),
+		"slug":                       "tfdrift-t-" + suffix,
+		"name":                       "Drift team " + suffix,
+		"description":                "Team for path-backed drift tests.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 2,
+		"active":                     true,
+	})
+	teamID := testAccIDAsInt(t, teamData.Id())
+
+	serviceResource := resourceService()
+	serviceData := testAccCreateResource(t, ctx, serviceResource, config, map[string]interface{}{
+		"team_id":       teamID,
+		"slug":          "tfdrift-s-" + suffix,
+		"name":          "Drift service " + suffix,
+		"description":   "Created before external service drift.",
+		"service_type":  "api",
+		"environment":   "testing",
+		"criticality":   "medium",
+		"tier":          "tier_3",
+		"status":        "operational",
+		"status_source": "manual",
+		"labels_json":   `{"managed_by":"terraform","test":"drift"}`,
+		"tags":          testAccStringSet("terraform", "drift"),
+		"metadata_json": `{"purpose":"drift"}`,
+		"enabled":       true,
+		"public":        false,
+	})
+	serviceID := serviceData.Id()
+	serviceName := "Drift svc upd " + suffix
+	serviceDescription := "Service updated outside Terraform."
+	if err := config.Client.Do(ctx, http.MethodPut, fmt.Sprintf("/api/services/%s", serviceID), map[string]interface{}{
+		"team_id":                      teamID,
+		"slug":                         serviceData.Get("slug"),
+		"name":                         serviceName,
+		"description":                  serviceDescription,
+		"service_type":                 "worker",
+		"environment":                  "testing",
+		"criticality":                  "critical",
+		"tier":                         "tier_1",
+		"status":                       "degraded",
+		"status_source":                "manual",
+		"status_message":               "Drifted outside Terraform.",
+		"default_rotation_id":          nil,
+		"default_escalation_policy_id": nil,
+		"notification_policy_id":       nil,
+		"priority_policy_id":           nil,
+		"labels":                       map[string]interface{}{"managed_by": "terraform", "test": "drift", "source": "api"},
+		"tags":                         []string{"terraform", "drift", "external"},
+		"metadata":                     map[string]interface{}{"purpose": "drift", "source": "api"},
+		"enabled":                      true,
+		"public":                       false,
+		"public_name":                  "Drift public " + suffix,
+		"public_description":           "Public service updated outside Terraform.",
+		"public_order":                 100,
+	}, nil); err != nil {
+		t.Fatalf("external service update failed: %v", err)
+	}
+
+	testAccRequireNoDiags(t, serviceResource.ReadWithoutTimeout(ctx, serviceData, config))
+	if got, want := serviceData.Id(), serviceID; got != want {
+		t.Fatalf("service id after drift read = %q, want %q", got, want)
+	}
+	for field, want := range map[string]interface{}{
+		"name":           serviceName,
+		"description":    serviceDescription,
+		"service_type":   "worker",
+		"criticality":    "critical",
+		"tier":           "tier_1",
+		"status":         "degraded",
+		"status_message": "Drifted outside Terraform.",
+	} {
+		if got := serviceData.Get(field); got != want {
+			t.Fatalf("drifted service %s = %#v, want %#v", field, got, want)
+		}
+	}
+
+	if err := config.Client.Do(ctx, http.MethodDelete, fmt.Sprintf("/api/services/%s", serviceID), nil, nil); err != nil {
+		t.Fatalf("external service delete failed: %v", err)
+	}
+	testAccRequireReadAfterExternalDelete(t, ctx, serviceResource, serviceData, config)
+}
+
 func TestAccIncidentRelayTerraformCLI(t *testing.T) {
 	config := testAccProviderConfig(t)
 
@@ -688,6 +819,16 @@ func testAccRequireNoDiags(t *testing.T, diags diag.Diagnostics) {
 
 	if diags.HasError() {
 		t.Fatalf("unexpected diagnostics: %v", diags)
+	}
+}
+
+func testAccRequireReadAfterExternalDelete(t *testing.T, ctx context.Context, resource *schema.Resource, data *schema.ResourceData, config *Config) {
+	t.Helper()
+
+	id := data.Id()
+	testAccRequireNoDiags(t, resource.ReadWithoutTimeout(ctx, data, config))
+	if got := data.Id(); got != "" {
+		t.Fatalf("id after external delete read = %q, want empty; original id was %q", got, id)
 	}
 }
 
