@@ -93,6 +93,7 @@ IncidentRelay instance with a self-signed certificate.
 - `incidentrelay_rotation`
 - `incidentrelay_rotation_layer`
 - `incidentrelay_rotation_layer_member`
+- `incidentrelay_rotation_override`
 - `incidentrelay_escalation_policy`
 - `incidentrelay_escalation_policy_rule`
 - `incidentrelay_notification_policy`

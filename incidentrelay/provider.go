@@ -69,6 +69,7 @@ func Provider() *schema.Provider {
 			"incidentrelay_rotation":                   resourceRotation(),
 			"incidentrelay_rotation_layer":             resourceRotationLayer(),
 			"incidentrelay_rotation_layer_member":      resourceRotationLayerMember(),
+			"incidentrelay_rotation_override":          resourceRotationOverride(),
 			"incidentrelay_escalation_policy":          resourceEscalationPolicy(),
 			"incidentrelay_escalation_policy_rule":     resourceEscalationPolicyRule(),
 			"incidentrelay_notification_policy":        resourceNotificationPolicy(),

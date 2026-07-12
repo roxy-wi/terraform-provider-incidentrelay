@@ -37,8 +37,9 @@ terraform import incidentrelay_group.infra 1
 
 For child resources that are read through a parent list endpoint, keep the
 parent ID in configuration before importing. Examples include memberships,
-rotation layers, rotation layer members, escalation policy rules, notification
-policy rules, business service components, and service child resources.
+rotation layers, rotation layer members, rotation overrides, escalation policy
+rules, notification policy rules, business service components, and service
+child resources.
 
 ## Import IDs
 
@@ -54,6 +55,7 @@ policy rules, business service components, and service child resources.
 | `incidentrelay_rotation` | Rotation ID | Direct read. |
 | `incidentrelay_rotation_layer` | Layer ID | Configure `rotation_id` before import. |
 | `incidentrelay_rotation_layer_member` | Member ID | Configure `layer_id` before import. |
+| `incidentrelay_rotation_override` | Override ID | Configure `rotation_id` before import. |
 | `incidentrelay_escalation_policy` | Policy ID | Direct read. |
 | `incidentrelay_escalation_policy_rule` | Rule ID | Configure `policy_id` before import. |
 | `incidentrelay_notification_policy` | Policy ID | Direct read. |

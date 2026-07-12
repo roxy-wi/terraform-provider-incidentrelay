@@ -143,6 +143,11 @@ import {
 }
 
 import {
-  to = incidentrelay_service_link.api_dashboard
+  to = incidentrelay_rotation_override.alice_cover
   id = "1005"
+}
+
+import {
+  to = incidentrelay_service_link.api_dashboard
+  id = "1006"
 }

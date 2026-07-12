@@ -91,6 +91,8 @@ Incoming alert route.
 - Sensitive: `intake_token`.
 - Import: numeric route ID. Intake token is only returned on create or
   regeneration.
+- When `escalation_policy_id` is configured, the provider sends policy
+  escalation mode to the API automatically.
 
 ## Rotations
 
@@ -122,6 +124,18 @@ Member period in a rotation layer.
 - Optional: `active`, `starts_at`.
 - Computed: `username`, `display_name`, `ends_at`.
 - Import: numeric member ID. Keep `layer_id` in configuration before import.
+
+### `incidentrelay_rotation_override`
+
+Temporary user override for a rotation.
+
+- Required: `rotation_id`, `user_id`, `starts_at`, `ends_at`.
+- Optional: `reason`.
+- Computed: `username`, `display_name`.
+- Import: numeric override ID. Keep `rotation_id` in configuration before
+  import.
+- Changing any configured field recreates the override because the IncidentRelay
+  API exposes create/delete for overrides.
 
 ## Policies
 

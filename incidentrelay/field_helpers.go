@@ -4,8 +4,20 @@ func reqString(name, description string) fieldDef {
 	return fieldDef{Name: name, Kind: kindString, Required: true, Description: description}
 }
 
+func reqStringForceNew(name, description string) fieldDef {
+	field := reqString(name, description)
+	field.ForceNew = true
+	return field
+}
+
 func optString(name, description string) fieldDef {
 	return fieldDef{Name: name, Kind: kindString, Optional: true, Description: description}
+}
+
+func optStringForceNew(name, description string) fieldDef {
+	field := optString(name, description)
+	field.ForceNew = true
+	return field
 }
 
 func optStringDefault(name, defaultValue, description string) fieldDef {

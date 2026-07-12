@@ -24,6 +24,7 @@ func TestProviderInternalValidate(t *testing.T) {
 		"incidentrelay_team",
 		"incidentrelay_channel",
 		"incidentrelay_route",
+		"incidentrelay_rotation_override",
 		"incidentrelay_service",
 		"incidentrelay_heartbeat",
 		"incidentrelay_business_service",
@@ -99,6 +100,39 @@ func TestCommonFieldLengthValidation(t *testing.T) {
 			_, errors := validate(tt.value, tt.field)
 			if gotErr := len(errors) > 0; gotErr != tt.wantErr {
 				t.Fatalf("validation errors = %v, wantErr %v", errors, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestRoutePayloadHookSetsEscalationMode(t *testing.T) {
+	tests := []struct {
+		name    string
+		payload map[string]interface{}
+		want    string
+	}{
+		{
+			name:    "policy when escalation policy id is present",
+			payload: map[string]interface{}{"escalation_policy_id": 42},
+			want:    "policy",
+		},
+		{
+			name:    "rotation when escalation policy id is absent",
+			payload: map[string]interface{}{},
+			want:    "rotation",
+		},
+		{
+			name:    "rotation when escalation policy id is zero",
+			payload: map[string]interface{}{"escalation_policy_id": 0},
+			want:    "rotation",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			routePayloadHook(nil, tt.payload)
+			if got := tt.payload["escalation_mode"]; got != tt.want {
+				t.Fatalf("escalation_mode = %v, want %s", got, tt.want)
 			}
 		})
 	}

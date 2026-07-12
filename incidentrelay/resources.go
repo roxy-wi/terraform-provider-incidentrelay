@@ -167,7 +167,16 @@ func resourceRoute() *schema.Resource {
 		DeletePath:   idPath("/api/routes/%s"),
 		CreateFields: []string{"team_id", "name", "source", "rotation_id", "service_id", "escalation_policy_id", "channel_ids", "notification_channel_mode", "matchers_json", "integration_config_json", "group_by", "enabled"},
 		UpdateFields: []string{"team_id", "name", "source", "rotation_id", "service_id", "escalation_policy_id", "channel_ids", "notification_channel_mode", "matchers_json", "integration_config_json", "group_by", "enabled"},
+		PayloadHook:  routePayloadHook,
 	})
+}
+
+func routePayloadHook(_ *schema.ResourceData, payload map[string]interface{}) {
+	if policyID, ok := intFromInterface(payload["escalation_policy_id"]); ok && policyID > 0 {
+		payload["escalation_mode"] = "policy"
+	} else {
+		payload["escalation_mode"] = "rotation"
+	}
 }
 
 func resourceRotation() *schema.Resource {
@@ -247,5 +256,25 @@ func resourceRotationLayerMember() *schema.Resource {
 		DeletePath:   idPath("/api/rotations/layers/members/%s"),
 		CreateFields: []string{"user_id", "position", "starts_at"},
 		UpdateFields: []string{"position", "active"},
+	})
+}
+
+func resourceRotationOverride() *schema.Resource {
+	fields := []fieldDef{
+		reqIntForceNew("rotation_id", "Parent rotation id."),
+		reqIntForceNew("user_id", "Override user id."),
+		reqStringForceNew("starts_at", "Override start datetime."),
+		reqStringForceNew("ends_at", "Override end datetime."),
+		optStringForceNew("reason", "Optional override reason."),
+		computedString("username", "Username."),
+		computedString("display_name", "Display name."),
+	}
+	return crudResource(resourceSpec{
+		Description:  "IncidentRelay temporary rotation override.",
+		Fields:       fields,
+		CreatePath:   fieldCreatePath("/api/rotations/%d/overrides", "rotation_id"),
+		ReadListPath: fieldListPath("/api/rotations/%d/overrides?include_expired=1", "rotation_id"),
+		DeletePath:   idPath("/api/rotations/overrides/%s"),
+		CreateFields: []string{"user_id", "starts_at", "ends_at", "reason"},
 	})
 }

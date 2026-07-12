@@ -26,6 +26,9 @@ resource "incidentrelay_route" "alertmanager" {
 }
 ```
 
+When `escalation_policy_id` is set, the provider sends the API route in policy
+escalation mode automatically.
+
 The API returns `intake_token` only on create or regeneration. It is marked
 sensitive in Terraform state.
 

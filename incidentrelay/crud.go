@@ -27,19 +27,17 @@ type resourceSpec struct {
 	CreateFields  []string
 	UpdateFields  []string
 	ReadFields    []string
+	PayloadHook   func(*schema.ResourceData, map[string]interface{})
 }
 
 func crudResource(spec resourceSpec) *schema.Resource {
-	return &schema.Resource{
+	resource := &schema.Resource{
 		Description: spec.Description,
 		CreateWithoutTimeout: func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 			return crudCreate(ctx, d, m, spec)
 		},
 		ReadWithoutTimeout: func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 			return crudRead(ctx, d, m, spec)
-		},
-		UpdateWithoutTimeout: func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
-			return crudUpdate(ctx, d, m, spec)
 		},
 		DeleteWithoutTimeout: func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 			return crudDelete(ctx, d, m, spec)
@@ -55,6 +53,14 @@ func crudResource(spec resourceSpec) *schema.Resource {
 		},
 		Schema: schemaFromFields(spec.Fields),
 	}
+
+	if spec.UpdatePath != nil && len(spec.UpdateFields) > 0 {
+		resource.UpdateWithoutTimeout = func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+			return crudUpdate(ctx, d, m, spec)
+		}
+	}
+
+	return resource
 }
 
 func crudCreate(ctx context.Context, d *schema.ResourceData, m interface{}, spec resourceSpec) diag.Diagnostics {
@@ -62,6 +68,9 @@ func crudCreate(ctx context.Context, d *schema.ResourceData, m interface{}, spec
 	payload, err := buildPayload(d, spec.Fields, spec.CreateFields, false)
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if spec.PayloadHook != nil {
+		spec.PayloadHook(d, payload)
 	}
 
 	var response map[string]interface{}
@@ -112,6 +121,9 @@ func crudUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, spec
 	payload, err := buildPayload(d, spec.Fields, spec.UpdateFields, true)
 	if err != nil {
 		return diag.FromErr(err)
+	}
+	if spec.PayloadHook != nil {
+		spec.PayloadHook(d, payload)
 	}
 
 	var response map[string]interface{}

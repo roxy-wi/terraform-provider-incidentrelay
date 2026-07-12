@@ -14,6 +14,7 @@ terraform import incidentrelay_route.alertmanager 30
 terraform import incidentrelay_rotation.primary 40
 terraform import incidentrelay_rotation_layer.business_hours 41
 terraform import incidentrelay_rotation_layer_member.alice 42
+terraform import incidentrelay_rotation_override.alice_cover 43
 terraform import incidentrelay_escalation_policy.critical 50
 terraform import incidentrelay_escalation_policy_rule.primary 51
 terraform import incidentrelay_notification_policy.production 60

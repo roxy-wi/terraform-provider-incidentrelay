@@ -112,6 +112,14 @@ resource "incidentrelay_rotation_layer_member" "bob" {
   position = 1
 }
 
+resource "incidentrelay_rotation_override" "alice_cover" {
+  rotation_id = incidentrelay_rotation.primary.id
+  user_id     = incidentrelay_admin_user.alice.id
+  starts_at   = "2026-07-14T09:00:00"
+  ends_at     = "2026-07-14T13:00:00"
+  reason      = "Alice covers the morning shift."
+}
+
 resource "incidentrelay_escalation_policy" "critical" {
   team_id      = incidentrelay_team.platform.id
   name         = "Critical escalation"
