@@ -371,10 +371,12 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	routeID := testAccIDAsInt(t, routeData.Id())
 	testAccUpdateResource(t, ctx, resourceRoute(), routeData, config, map[string]interface{}{
 		"name":                      "Acc route upd " + suffix,
+		"rotation_id":               rotationID,
 		"notification_channel_mode": "service_policy",
 		"enabled":                   true,
 	}, map[string]interface{}{
 		"name":                      "Acc route upd " + suffix,
+		"rotation_id":               rotationID,
 		"notification_channel_mode": "service_policy",
 		"enabled":                   true,
 		"escalation_mode":           "policy",
