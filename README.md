@@ -179,6 +179,19 @@ make build
 
 The CI workflow runs the same checks on pull requests and pushes to `main`.
 
+Acceptance tests can be run against a live IncidentRelay instance:
+
+```sh
+export INCIDENTRELAY_ACC=1
+export INCIDENTRELAY_BASE_URL="http://127.0.0.1:8080"
+export INCIDENTRELAY_USERNAME="admin"
+export INCIDENTRELAY_PASSWORD="change-me-123"
+make test-acc
+```
+
+GitHub Actions also includes an `Acceptance` workflow that starts
+`ghcr.io/roxy-wi/incidentrelay:1.1` with Docker and runs this test layer.
+
 ## Publishing to the Terraform Registry
 
 The GitHub repository must be public and named `terraform-provider-incidentrelay`.

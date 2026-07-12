@@ -1,0 +1,82 @@
+name: Acceptance
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/acceptance.yml"
+      - "go.mod"
+      - "go.sum"
+      - "incidentrelay/**"
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/acceptance.yml"
+      - "go.mod"
+      - "go.sum"
+      - "incidentrelay/**"
+
+permissions:
+  contents: read
+
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    env:
+      INCIDENTRELAY_IMAGE: ghcr.io/roxy-wi/incidentrelay:1.1
+      INCIDENTRELAY_BASE_URL: http://127.0.0.1:8080
+      INCIDENTRELAY_USERNAME: admin
+      INCIDENTRELAY_PASSWORD: change-me-123
+      INCIDENTRELAY_ACC: "1"
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Start IncidentRelay
+        run: |
+          docker run -d \
+            --name incidentrelay-acc \
+            -p 8080:8080 \
+            -e INCIDENTRELAY_CONFIG_FILE=/etc/incidentrelay/incidentrelay.conf \
+            -e INCIDENTRELAY_SERVICE=web \
+            -e INCIDENTRELAY_RUN_MIGRATIONS=1 \
+            -e INCIDENTRELAY_PORT=8080 \
+            -e INCIDENTRELAY_WEB_WORKERS=1 \
+            -e INCIDENTRELAY_WEB_THREADS=4 \
+            -e INCIDENTRELAY_WEB_TIMEOUT=120 \
+            "$INCIDENTRELAY_IMAGE"
+
+      - name: Wait for IncidentRelay
+        run: |
+          for i in {1..60}; do
+            if curl -fsS "$INCIDENTRELAY_BASE_URL/api/health" || curl -fsS "$INCIDENTRELAY_BASE_URL/login" >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs incidentrelay-acc
+          exit 1
+
+      - name: Create admin user
+        run: |
+          docker exec incidentrelay-acc \
+            python manage.py create-admin \
+              --username "$INCIDENTRELAY_USERNAME" \
+              --password "$INCIDENTRELAY_PASSWORD" \
+              --email admin@example.com
+
+      - name: Run provider acceptance tests
+        run: go test -run '^TestAcc' -count=1 ./incidentrelay
+
+      - name: Dump IncidentRelay logs
+        if: always()
+        run: docker logs incidentrelay-acc || true
+
+      - name: Stop IncidentRelay
+        if: always()
+        run: docker rm -f incidentrelay-acc || true

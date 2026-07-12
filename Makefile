@@ -6,7 +6,7 @@ TYPE ?= incidentrelay
 OS_ARCH := $(shell go env GOOS)_$(shell go env GOARCH)
 INSTALL_DIR := $(HOME)/.terraform.d/plugins/$(HOSTNAME)/$(NAMESPACE)/$(TYPE)/$(VERSION)/$(OS_ARCH)
 
-.PHONY: build test test-race fmt fmt-check tidy install-local clean
+.PHONY: build test test-race test-acc fmt fmt-check tidy install-local clean
 
 build:
 	go build -o bin/$(BINARY_NAME) .
@@ -16,6 +16,9 @@ test:
 
 test-race:
 	go test -race ./...
+
+test-acc:
+	go test -run '^TestAcc' -count=1 ./incidentrelay
 
 fmt:
 	gofmt -w .

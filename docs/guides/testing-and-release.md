@@ -28,6 +28,23 @@ go test -race ./...
 go build -o /tmp/terraform-provider-incidentrelay .
 ```
 
+The acceptance workflow starts a real IncidentRelay container from
+`ghcr.io/roxy-wi/incidentrelay:1.1` with Docker, creates a temporary admin user,
+and runs the provider acceptance tests with `INCIDENTRELAY_ACC=1`.
+
+Acceptance tests are intentionally separate from the fast CI workflow because
+they pull a Docker image, run migrations, and exercise the live HTTP API.
+
+Run the same test layer locally against an already running IncidentRelay:
+
+```sh
+export INCIDENTRELAY_ACC=1
+export INCIDENTRELAY_BASE_URL="http://127.0.0.1:8080"
+export INCIDENTRELAY_USERNAME="admin"
+export INCIDENTRELAY_PASSWORD="change-me-123"
+make test-acc
+```
+
 The release workflow runs on semver tags such as `v0.1.2`. It builds
 Registry-compatible zip assets, attaches the Terraform Registry manifest,
 generates SHA256 checksums, and signs the checksum file with GPG.
