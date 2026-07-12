@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -139,8 +140,15 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 	userID := testAccIDAsInt(t, userData.Id())
 
-	testAccCreateResource(t, ctx, resourceTeamMembership(), config, map[string]interface{}{
+	teamMembershipData := testAccCreateResource(t, ctx, resourceTeamMembership(), config, map[string]interface{}{
 		"team_id": teamID,
+		"user_id": userID,
+		"role":    "responder",
+		"active":  true,
+	})
+	testAccImportReadResource(t, ctx, resourceTeamMembership(), config, teamMembershipData, map[string]interface{}{
+		"team_id": teamID,
+	}, map[string]interface{}{
 		"user_id": userID,
 		"role":    "responder",
 		"active":  true,
@@ -187,13 +195,27 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"enabled":         true,
 	})
 	layerID := testAccIDAsInt(t, layerData.Id())
+	testAccImportReadResource(t, ctx, resourceRotationLayer(), config, layerData, map[string]interface{}{
+		"rotation_id": rotationID,
+	}, map[string]interface{}{
+		"name":     "Acc layer " + suffix,
+		"priority": 100,
+		"enabled":  true,
+	})
 
-	testAccCreateResource(t, ctx, resourceRotationLayerMember(), config, map[string]interface{}{
+	layerMemberData := testAccCreateResource(t, ctx, resourceRotationLayerMember(), config, map[string]interface{}{
 		"layer_id":  layerID,
 		"user_id":   userID,
 		"position":  0,
 		"active":    true,
 		"starts_at": "2026-07-13T09:00:00",
+	})
+	testAccImportReadResource(t, ctx, resourceRotationLayerMember(), config, layerMemberData, map[string]interface{}{
+		"layer_id": layerID,
+	}, map[string]interface{}{
+		"user_id":  userID,
+		"position": 0,
+		"active":   true,
 	})
 
 	overrideData := testAccCreateResource(t, ctx, resourceRotationOverride(), config, map[string]interface{}{
@@ -206,6 +228,12 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	if got := overrideData.Get("username").(string); got != userData.Get("username").(string) {
 		t.Fatalf("override username = %q, want %q", got, userData.Get("username").(string))
 	}
+	testAccImportReadResource(t, ctx, resourceRotationOverride(), config, overrideData, map[string]interface{}{
+		"rotation_id": rotationID,
+	}, map[string]interface{}{
+		"user_id": userID,
+		"reason":  "Terraform acceptance override.",
+	})
 
 	escalationPolicyData := testAccCreateResource(t, ctx, resourceEscalationPolicy(), config, map[string]interface{}{
 		"team_id":      teamID,
@@ -216,8 +244,17 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 	escalationPolicyID := testAccIDAsInt(t, escalationPolicyData.Id())
 
-	testAccCreateResource(t, ctx, resourceEscalationPolicyRule(), config, map[string]interface{}{
+	escalationPolicyRuleData := testAccCreateResource(t, ctx, resourceEscalationPolicyRule(), config, map[string]interface{}{
 		"policy_id":     escalationPolicyID,
+		"position":      1,
+		"delay_seconds": 300,
+		"target_type":   "rotation",
+		"target_id":     rotationID,
+		"enabled":       true,
+	})
+	testAccImportReadResource(t, ctx, resourceEscalationPolicyRule(), config, escalationPolicyRuleData, map[string]interface{}{
+		"policy_id": escalationPolicyID,
+	}, map[string]interface{}{
 		"position":      1,
 		"delay_seconds": 300,
 		"target_type":   "rotation",
@@ -233,7 +270,7 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 	notificationPolicyID := testAccIDAsInt(t, notificationPolicyData.Id())
 
-	testAccCreateResource(t, ctx, resourceNotificationPolicyRule(), config, map[string]interface{}{
+	notificationPolicyRuleData := testAccCreateResource(t, ctx, resourceNotificationPolicyRule(), config, map[string]interface{}{
 		"policy_id":         notificationPolicyID,
 		"name":              "Acc notif rule " + suffix,
 		"description":       "Acceptance notification rule.",
@@ -241,6 +278,14 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"event_types":       testAccStringSet("notification", "reminder", "escalation"),
 		"matchers_json":     `{"labels":{"severity":"critical","service":"api"}}`,
 		"channel_ids":       testAccIntSet(channelID),
+		"continue_matching": true,
+		"enabled":           true,
+	})
+	testAccImportReadResource(t, ctx, resourceNotificationPolicyRule(), config, notificationPolicyRuleData, map[string]interface{}{
+		"policy_id": notificationPolicyID,
+	}, map[string]interface{}{
+		"name":              "Acc notif rule " + suffix,
+		"position":          1,
 		"continue_matching": true,
 		"enabled":           true,
 	})
@@ -285,7 +330,7 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	}
 	routeID := testAccIDAsInt(t, routeData.Id())
 
-	testAccCreateResource(t, ctx, resourceServiceMatchRule(), config, map[string]interface{}{
+	serviceMatchRuleData := testAccCreateResource(t, ctx, resourceServiceMatchRule(), config, map[string]interface{}{
 		"team_id":       teamID,
 		"service_id":    serviceID,
 		"route_id":      routeID,
@@ -294,6 +339,15 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"description":   "Acceptance service match rule.",
 		"matchers_json": `{"labels":{"service":"api","environment":"testing"}}`,
 		"enabled":       true,
+	})
+	testAccImportReadResource(t, ctx, resourceServiceMatchRule(), config, serviceMatchRuleData, map[string]interface{}{
+		"service_id": serviceID,
+	}, map[string]interface{}{
+		"team_id":    teamID,
+		"service_id": serviceID,
+		"route_id":   routeID,
+		"name":       "Acc match " + suffix,
+		"enabled":    true,
 	})
 }
 
@@ -340,6 +394,40 @@ func testAccCreateResource(t *testing.T, ctx context.Context, resource *schema.R
 	data := schema.TestResourceDataRaw(t, resource.Schema, values)
 	testAccRequireNoDiags(t, resource.CreateWithoutTimeout(ctx, data, config))
 	testAccCleanupResource(t, resource, data, config)
+	return data
+}
+
+func testAccImportReadResource(t *testing.T, ctx context.Context, resource *schema.Resource, config *Config, source *schema.ResourceData, configValues map[string]interface{}, checks map[string]interface{}) *schema.ResourceData {
+	t.Helper()
+
+	data := schema.TestResourceDataRaw(t, resource.Schema, configValues)
+	data.SetId(source.Id())
+
+	if resource.Importer == nil || resource.Importer.StateContext == nil {
+		t.Fatal("resource has no importer")
+	}
+
+	imported, err := resource.Importer.StateContext(ctx, data, config)
+	if err != nil {
+		t.Fatalf("import state failed: %v", err)
+	}
+	if len(imported) != 1 {
+		t.Fatalf("import returned %d states, want 1", len(imported))
+	}
+
+	data = imported[0]
+	testAccRequireNoDiags(t, resource.ReadWithoutTimeout(ctx, data, config))
+
+	if got, want := data.Id(), source.Id(); got != want {
+		t.Fatalf("imported id = %q, want %q", got, want)
+	}
+
+	for field, want := range checks {
+		if got := data.Get(field); !reflect.DeepEqual(got, want) {
+			t.Fatalf("imported %s = %#v, want %#v", field, got, want)
+		}
+	}
+
 	return data
 }
 
