@@ -28,13 +28,16 @@ go test -race ./...
 go build -o /tmp/terraform-provider-incidentrelay .
 ```
 
-The acceptance workflow starts a real IncidentRelay container from
-`ghcr.io/roxy-wi/incidentrelay:1.1` with Docker, creates a temporary admin user,
-and runs the provider acceptance tests with `INCIDENTRELAY_ACC=1`.
+The acceptance workflow starts a real IncidentRelay container with Docker,
+creates a temporary admin user, and runs the provider acceptance tests with
+`INCIDENTRELAY_ACC=1`.
 
-The workflow grants `packages: read` and logs in to GHCR with `GITHUB_TOKEN`
-before pulling the IncidentRelay image. This is required when the package is
-private or scoped to the GitHub organization.
+The workflow first tries to pull `ghcr.io/roxy-wi/incidentrelay:1.1` after
+logging in to GHCR with `GITHUB_TOKEN` and `packages: read`. If the package is
+not readable by the provider repository, the workflow clones
+`roxy-wi/IncidentRelay` at `v1.1` and builds the same image locally on the
+runner. This keeps acceptance tests reproducible without requiring manual GHCR
+package access configuration.
 
 Acceptance tests are intentionally separate from the fast CI workflow because
 they pull a Docker image, run migrations, and exercise the live HTTP API.
