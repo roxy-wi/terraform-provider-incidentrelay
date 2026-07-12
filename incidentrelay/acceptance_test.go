@@ -35,7 +35,7 @@ func TestAccIncidentRelayCoreResources(t *testing.T) {
 	groupResource := resourceGroup()
 	groupData := schema.TestResourceDataRaw(t, groupResource.Schema, map[string]interface{}{
 		"slug":        "tfacc-" + suffix,
-		"name":        "Terraform acceptance " + suffix,
+		"name":        "TF acc group " + suffix,
 		"description": "Created by Terraform provider acceptance tests.",
 		"active":      true,
 	})
@@ -46,7 +46,7 @@ func TestAccIncidentRelayCoreResources(t *testing.T) {
 	teamData := schema.TestResourceDataRaw(t, teamResource.Schema, map[string]interface{}{
 		"group_id":                   testAccIDAsInt(t, groupData.Id()),
 		"slug":                       "tfacc-team-" + suffix,
-		"name":                       "Terraform acceptance team " + suffix,
+		"name":                       "TF acc team " + suffix,
 		"description":                "Created by Terraform provider acceptance tests.",
 		"escalation_enabled":         true,
 		"escalation_after_reminders": 2,
@@ -59,7 +59,7 @@ func TestAccIncidentRelayCoreResources(t *testing.T) {
 	serviceData := schema.TestResourceDataRaw(t, serviceResource.Schema, map[string]interface{}{
 		"team_id":      testAccIDAsInt(t, teamData.Id()),
 		"slug":         "tfacc-service-" + suffix,
-		"name":         "Terraform acceptance service " + suffix,
+		"name":         "TF acc service " + suffix,
 		"description":  "Created by Terraform provider acceptance tests.",
 		"service_type": "api",
 		"environment":  "test",
