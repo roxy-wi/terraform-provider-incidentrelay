@@ -410,6 +410,212 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 }
 
+func TestAccIncidentRelayRouteBehavior(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tfroute-g-" + suffix,
+		"name":        "Route group " + suffix,
+		"description": "Route behavior acceptance group.",
+		"active":      true,
+	})
+	teamData := testAccCreateResource(t, ctx, resourceTeam(), config, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, groupData.Id()),
+		"slug":                       "tfroute-t-" + suffix,
+		"name":                       "Route team " + suffix,
+		"description":                "Route behavior acceptance team.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 2,
+		"active":                     true,
+	})
+	teamID := testAccIDAsInt(t, teamData.Id())
+
+	channelData := testAccCreateResource(t, ctx, resourceChannel(), config, map[string]interface{}{
+		"team_id":      teamID,
+		"name":         "Route email " + suffix,
+		"channel_type": "email",
+		"config_json":  `{"notify_on_severities":["critical","warning"]}`,
+		"enabled":      true,
+	})
+	channelID := testAccIDAsInt(t, channelData.Id())
+
+	rotationData := testAccCreateResource(t, ctx, resourceRotation(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Route rotation " + suffix,
+		"description":               "Route behavior rotation.",
+		"start_at":                  "2026-07-13T09:00:00",
+		"rotation_type":             "weekly",
+		"interval_value":            1,
+		"interval_unit":             "weeks",
+		"handoff_time":              "09:00",
+		"handoff_weekday":           0,
+		"timezone":                  "UTC",
+		"reminder_interval_seconds": 300,
+		"enabled":                   true,
+		"add_team_members":          false,
+	})
+	rotationID := testAccIDAsInt(t, rotationData.Id())
+
+	escalationPolicyData := testAccCreateResource(t, ctx, resourceEscalationPolicy(), config, map[string]interface{}{
+		"team_id":      teamID,
+		"name":         "Route policy " + suffix,
+		"description":  "Route behavior policy.",
+		"enabled":      true,
+		"repeat_count": 1,
+	})
+	escalationPolicyID := testAccIDAsInt(t, escalationPolicyData.Id())
+
+	serviceData := testAccCreateResource(t, ctx, resourceService(), config, map[string]interface{}{
+		"team_id":       teamID,
+		"slug":          "tfroute-s-" + suffix,
+		"name":          "Route svc " + suffix,
+		"description":   "Route behavior service.",
+		"service_type":  "api",
+		"environment":   "testing",
+		"criticality":   "high",
+		"tier":          "tier_2",
+		"status":        "operational",
+		"status_source": "manual",
+		"labels_json":   `{"service":"payments","managed_by":"terraform"}`,
+		"tags":          testAccStringSet("terraform", "routes"),
+		"metadata_json": `{"purpose":"route-behavior"}`,
+		"enabled":       true,
+		"public":        false,
+	})
+	serviceID := testAccIDAsInt(t, serviceData.Id())
+
+	policyRouteMatchers := `{
+		"fields": {"payload.custom.cluster": "core"},
+		"labels": {
+			"environment": "production",
+			"severity": ["critical", "warning"]
+		}
+	}`
+	policyRouteData := testAccCreateResource(t, ctx, resourceRoute(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Route policy " + suffix,
+		"source":                    "alertmanager",
+		"service_id":                serviceID,
+		"escalation_policy_id":      escalationPolicyID,
+		"channel_ids":               testAccIntSet(channelID),
+		"notification_channel_mode": "service_policy_plus_route",
+		"matchers_json":             policyRouteMatchers,
+		"integration_config_json":   `{}`,
+		"group_by":                  testAccStringSet("alertname", "labels.instance", "service"),
+		"enabled":                   true,
+	})
+	policyRouteID := testAccIDAsInt(t, policyRouteData.Id())
+	if got := policyRouteData.Get("escalation_mode").(string); got != "policy" {
+		t.Fatalf("policy route escalation_mode = %q, want policy", got)
+	}
+	if got := policyRouteData.Get("service_name").(string); got != serviceData.Get("name").(string) {
+		t.Fatalf("policy route service_name = %q, want %q", got, serviceData.Get("name").(string))
+	}
+	if got := policyRouteData.Get("has_intake_token").(bool); !got {
+		t.Fatal("policy route has_intake_token = false, want true")
+	}
+	assertSetElements(t, policyRouteData.Get("group_by").(*schema.Set), testAccStringSet("alertname", "labels.instance", "service"))
+
+	policyRouteAPI := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/routes/%d", policyRouteID))
+	testAccRequireAPIStringField(t, policyRouteAPI, "escalation_mode", "policy")
+	testAccRequireAPIIntField(t, policyRouteAPI, "escalation_policy_id", escalationPolicyID)
+	testAccRequireAPIIntField(t, policyRouteAPI, "service_id", serviceID)
+	testAccRequireAPIStringField(t, policyRouteAPI, "notification_channel_mode", "service_policy_plus_route")
+	testAccRequireAPIJSONField(t, policyRouteAPI, "matchers", policyRouteMatchers)
+	testAccRequireAPIStringListField(t, policyRouteAPI, "group_by", "alertname", "labels.instance", "service")
+	testAccRequireAPIChannelIDs(t, policyRouteAPI, channelID)
+
+	rotationRouteMatchers := `{
+		"labels": {
+			"environment": "staging",
+			"service": "payments"
+		},
+		"title_regex": "^Payment.*"
+	}`
+	rotationRouteData := testAccCreateResource(t, ctx, resourceRoute(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Route rotation " + suffix,
+		"source":                    "alertmanager",
+		"rotation_id":               rotationID,
+		"service_id":                serviceID,
+		"notification_channel_mode": "route_only",
+		"matchers_json":             rotationRouteMatchers,
+		"integration_config_json":   `{}`,
+		"group_by":                  testAccStringSet("alertname", "route_id"),
+		"enabled":                   true,
+	})
+	rotationRouteID := testAccIDAsInt(t, rotationRouteData.Id())
+	if got := rotationRouteData.Get("escalation_mode").(string); got != "rotation" {
+		t.Fatalf("rotation route escalation_mode = %q, want rotation", got)
+	}
+
+	rotationRouteAPI := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/routes/%d", rotationRouteID))
+	testAccRequireAPIStringField(t, rotationRouteAPI, "escalation_mode", "rotation")
+	testAccRequireAPIIntField(t, rotationRouteAPI, "rotation_id", rotationID)
+	testAccRequireAPINilField(t, rotationRouteAPI, "escalation_policy_id")
+	testAccRequireAPIStringField(t, rotationRouteAPI, "notification_channel_mode", "route_only")
+	testAccRequireAPIJSONField(t, rotationRouteAPI, "matchers", rotationRouteMatchers)
+	testAccRequireAPIStringListField(t, rotationRouteAPI, "group_by", "alertname", "route_id")
+
+	serviceMatchRuleData := testAccCreateResource(t, ctx, resourceServiceMatchRule(), config, map[string]interface{}{
+		"team_id":       teamID,
+		"service_id":    serviceID,
+		"route_id":      policyRouteID,
+		"position":      1,
+		"name":          "Route rule " + suffix,
+		"description":   "Route-scoped service match rule.",
+		"matchers_json": `{"labels":{"service":"payments","environment":"production"}}`,
+		"enabled":       true,
+	})
+	if got := serviceMatchRuleData.Get("route_name").(string); got != policyRouteData.Get("name").(string) {
+		t.Fatalf("service match rule route_name = %q, want %q", got, policyRouteData.Get("name").(string))
+	}
+	testAccUpdateResource(t, ctx, resourceServiceMatchRule(), serviceMatchRuleData, config, map[string]interface{}{
+		"route_id":      rotationRouteID,
+		"position":      2,
+		"matchers_json": `{"labels":{"service":"payments","environment":"staging"}}`,
+	}, map[string]interface{}{
+		"route_id": rotationRouteID,
+		"position": 2,
+		"enabled":  true,
+	})
+	if got := serviceMatchRuleData.Get("route_name").(string); got != rotationRouteData.Get("name").(string) {
+		t.Fatalf("updated service match rule route_name = %q, want %q", got, rotationRouteData.Get("name").(string))
+	}
+
+	updatedRouteMatchers := `{
+		"labels": {
+			"environment": {"not": "production"},
+			"service": "payments"
+		}
+	}`
+	testAccUpdateResource(t, ctx, resourceRoute(), rotationRouteData, config, map[string]interface{}{
+		"name":                      "Route rot upd " + suffix,
+		"notification_channel_mode": "service_policy",
+		"matchers_json":             updatedRouteMatchers,
+		"group_by":                  testAccStringSet("route_id", "source"),
+		"enabled":                   false,
+	}, map[string]interface{}{
+		"name":                      "Route rot upd " + suffix,
+		"notification_channel_mode": "service_policy",
+		"matchers_json":             `{"labels":{"environment":{"not":"production"},"service":"payments"}}`,
+		"enabled":                   false,
+		"escalation_mode":           "rotation",
+	})
+	assertSetElements(t, rotationRouteData.Get("group_by").(*schema.Set), testAccStringSet("route_id", "source"))
+
+	updatedRouteAPI := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/routes/%d", rotationRouteID))
+	testAccRequireAPIStringField(t, updatedRouteAPI, "escalation_mode", "rotation")
+	testAccRequireAPIIntField(t, updatedRouteAPI, "rotation_id", rotationID)
+	testAccRequireAPINilField(t, updatedRouteAPI, "escalation_policy_id")
+	testAccRequireAPIStringField(t, updatedRouteAPI, "notification_channel_mode", "service_policy")
+	testAccRequireAPIBoolField(t, updatedRouteAPI, "enabled", false)
+	testAccRequireAPIJSONField(t, updatedRouteAPI, "matchers", updatedRouteMatchers)
+	testAccRequireAPIStringListField(t, updatedRouteAPI, "group_by", "route_id", "source")
+}
+
 func TestAccIncidentRelayDriftAndReadAfterDelete(t *testing.T) {
 	config := testAccProviderConfig(t)
 	ctx := context.Background()
@@ -829,6 +1035,107 @@ func testAccRequireReadAfterExternalDelete(t *testing.T, ctx context.Context, re
 	testAccRequireNoDiags(t, resource.ReadWithoutTimeout(ctx, data, config))
 	if got := data.Id(); got != "" {
 		t.Fatalf("id after external delete read = %q, want empty; original id was %q", got, id)
+	}
+}
+
+func testAccReadAPIObject(t *testing.T, ctx context.Context, config *Config, path string) map[string]interface{} {
+	t.Helper()
+
+	var response map[string]interface{}
+	if err := config.Client.Do(ctx, http.MethodGet, path, nil, &response); err != nil {
+		t.Fatalf("GET %s failed: %v", path, err)
+	}
+	return response
+}
+
+func testAccRequireAPIStringField(t *testing.T, response map[string]interface{}, field, want string) {
+	t.Helper()
+
+	if got, ok := response[field].(string); !ok || got != want {
+		t.Fatalf("api %s = %#v, want %q", field, response[field], want)
+	}
+}
+
+func testAccRequireAPIBoolField(t *testing.T, response map[string]interface{}, field string, want bool) {
+	t.Helper()
+
+	if got, ok := response[field].(bool); !ok || got != want {
+		t.Fatalf("api %s = %#v, want %v", field, response[field], want)
+	}
+}
+
+func testAccRequireAPIIntField(t *testing.T, response map[string]interface{}, field string, want int) {
+	t.Helper()
+
+	got, ok := intFromInterface(response[field])
+	if !ok || got != want {
+		t.Fatalf("api %s = %#v, want %d", field, response[field], want)
+	}
+}
+
+func testAccRequireAPINilField(t *testing.T, response map[string]interface{}, field string) {
+	t.Helper()
+
+	if got := response[field]; got != nil {
+		t.Fatalf("api %s = %#v, want nil", field, got)
+	}
+}
+
+func testAccRequireAPIJSONField(t *testing.T, response map[string]interface{}, field, wantRaw string) {
+	t.Helper()
+
+	got, err := valueToJSONString(response[field])
+	if err != nil {
+		t.Fatalf("encode api %s: %v", field, err)
+	}
+	want, err := normalizeJSONString(wantRaw)
+	if err != nil {
+		t.Fatalf("normalize expected api %s: %v", field, err)
+	}
+	if got != want {
+		t.Fatalf("api %s = %q, want %q", field, got, want)
+	}
+}
+
+func testAccRequireAPIStringListField(t *testing.T, response map[string]interface{}, field string, want ...string) {
+	t.Helper()
+
+	items, ok := response[field].([]interface{})
+	if !ok {
+		t.Fatalf("api %s = %#v, want list", field, response[field])
+	}
+	wantItems := make([]interface{}, 0, len(want))
+	for _, item := range want {
+		wantItems = append(wantItems, item)
+	}
+	if !sameElements(items, wantItems) {
+		t.Fatalf("api %s = %#v, want %#v", field, items, wantItems)
+	}
+}
+
+func testAccRequireAPIChannelIDs(t *testing.T, response map[string]interface{}, want ...int) {
+	t.Helper()
+
+	channels, ok := response["channels"].([]interface{})
+	if !ok {
+		t.Fatalf("api channels = %#v, want list", response["channels"])
+	}
+
+	gotIDs := make([]interface{}, 0, len(channels))
+	for _, item := range channels {
+		channel, ok := item.(map[string]interface{})
+		if !ok {
+			t.Fatalf("api channel item = %#v, want object", item)
+		}
+		id, ok := intFromInterface(channel["id"])
+		if !ok {
+			t.Fatalf("api channel id = %#v, want int", channel["id"])
+		}
+		gotIDs = append(gotIDs, id)
+	}
+
+	if !sameElements(gotIDs, testAccIntSet(want...)) {
+		t.Fatalf("api channel ids = %#v, want %#v", gotIDs, want)
 	}
 }
 
