@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -42,6 +43,64 @@ func TestProviderInternalValidate(t *testing.T) {
 		if provider.DataSourcesMap[name] == nil {
 			t.Fatalf("provider missing data source %s", name)
 		}
+	}
+}
+
+func TestCommonFieldLengthValidation(t *testing.T) {
+	resource := resourceGroup()
+	tests := []struct {
+		name    string
+		field   string
+		value   string
+		wantErr bool
+	}{
+		{
+			name:  "name allows 40 characters",
+			field: "name",
+			value: strings.Repeat("n", nameSlugMaxLength),
+		},
+		{
+			name:    "name rejects 41 characters",
+			field:   "name",
+			value:   strings.Repeat("n", nameSlugMaxLength+1),
+			wantErr: true,
+		},
+		{
+			name:  "slug allows 40 characters",
+			field: "slug",
+			value: strings.Repeat("s", nameSlugMaxLength),
+		},
+		{
+			name:    "slug rejects 41 characters",
+			field:   "slug",
+			value:   strings.Repeat("s", nameSlugMaxLength+1),
+			wantErr: true,
+		},
+		{
+			name:  "description allows 120 characters",
+			field: "description",
+			value: strings.Repeat("d", descriptionMaxLength),
+		},
+		{
+			name:    "description rejects 121 characters",
+			field:   "description",
+			value:   strings.Repeat("d", descriptionMaxLength+1),
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			validate := resource.Schema[tt.field].ValidateFunc
+			if validate == nil {
+				t.Fatalf("%s has no ValidateFunc", tt.field)
+			}
+
+			_, errors := validate(tt.value, tt.field)
+			if gotErr := len(errors) > 0; gotErr != tt.wantErr {
+				t.Fatalf("validation errors = %v, wantErr %v", errors, tt.wantErr)
+			}
+		})
 	}
 }
 

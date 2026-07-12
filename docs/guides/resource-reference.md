@@ -10,6 +10,12 @@ description: |-
 This guide summarizes all provider-managed IncidentRelay objects. Resource pages
 contain focused examples; this page is a compact map for day-to-day authoring.
 
+## Common Field Limits
+
+For all provider resources and data sources, fields named exactly `name` or
+`slug` are limited to 40 characters. Fields named exactly `description` are
+limited to 120 characters.
+
 ## Identity And Access
 
 ### `incidentrelay_group`

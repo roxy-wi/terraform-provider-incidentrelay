@@ -62,7 +62,7 @@ func TestAccIncidentRelayCoreResources(t *testing.T) {
 		"name":         "TF acc service " + suffix,
 		"description":  "Created by Terraform provider acceptance tests.",
 		"service_type": "api",
-		"environment":  "test",
+		"environment":  "testing",
 		"criticality":  "medium",
 		"tier":         "tier_3",
 		"labels_json":  `{"managed_by":"terraform","test":"acceptance"}`,

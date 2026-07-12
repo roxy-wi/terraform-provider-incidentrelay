@@ -23,6 +23,11 @@ const (
 	kindIntSet    fieldKind = "int_set"
 )
 
+const (
+	nameSlugMaxLength    = 40
+	descriptionMaxLength = 120
+)
+
 type fieldDef struct {
 	Name        string
 	APIName     string
@@ -80,11 +85,25 @@ func schemaFromFields(fields []fieldDef) map[string]*schema.Schema {
 		default:
 			panic(fmt.Sprintf("unsupported field kind %q for %s", field.Kind, field.Name))
 		}
+		applyCommonFieldValidation(item, field)
 
 		result[field.Name] = item
 	}
 
 	return result
+}
+
+func applyCommonFieldValidation(item *schema.Schema, field fieldDef) {
+	if field.Kind != kindString || (!field.Required && !field.Optional) {
+		return
+	}
+
+	switch field.Name {
+	case "name", "slug":
+		item.ValidateFunc = validation.StringLenBetween(1, nameSlugMaxLength)
+	case "description":
+		item.ValidateFunc = validation.StringLenBetween(0, descriptionMaxLength)
+	}
 }
 
 func normalizeJSONStringState(value interface{}) string {
