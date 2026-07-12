@@ -215,6 +215,29 @@ func TestBuildPayloadConvertsFieldKinds(t *testing.T) {
 	}
 }
 
+func TestBuildPayloadOmitsUnsetOptionalInt(t *testing.T) {
+	fields := []fieldDef{
+		reqString("name", "Name."),
+		optInt("rotation_id", "Rotation id."),
+		optIntDefault("public_order", 100, "Public order."),
+	}
+	data := schema.TestResourceDataRaw(t, schemaFromFields(fields), map[string]interface{}{
+		"name": "route",
+	})
+
+	payload, err := buildPayload(data, fields, []string{"name", "rotation_id", "public_order"}, false)
+	if err != nil {
+		t.Fatalf("buildPayload returned error: %v", err)
+	}
+
+	if _, ok := payload["rotation_id"]; ok {
+		t.Fatalf("payload[rotation_id] = %#v, want omitted", payload["rotation_id"])
+	}
+	if got, want := payload["public_order"], 100; got != want {
+		t.Fatalf("payload[public_order] = %#v, want %#v", got, want)
+	}
+}
+
 func TestBuildPayloadRejectsInvalidJSON(t *testing.T) {
 	fields := []fieldDef{
 		reqJSON("config_json", "config", "Config."),

@@ -185,6 +185,12 @@ func buildPayload(d *schema.ResourceData, fields []fieldDef, fieldNames []string
 			}
 			continue
 		}
+		if omitUnsetOptionalInt(field, value) {
+			if update && d.HasChange(name) {
+				payload[field.apiName()] = nil
+			}
+			continue
+		}
 
 		switch field.Kind {
 		case kindString:
@@ -207,6 +213,14 @@ func buildPayload(d *schema.ResourceData, fields []fieldDef, fieldNames []string
 	}
 
 	return payload, nil
+}
+
+func omitUnsetOptionalInt(field fieldDef, value interface{}) bool {
+	if field.Kind != kindInt || !field.Optional || field.Default != nil {
+		return false
+	}
+	parsed, ok := intFromInterface(value)
+	return ok && parsed == 0
 }
 
 func setFieldsFromResponse(d *schema.ResourceData, fields []fieldDef, fieldNames []string, response map[string]interface{}) error {
