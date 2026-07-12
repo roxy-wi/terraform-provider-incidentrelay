@@ -3,8 +3,10 @@ package incidentrelay
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/exec"
@@ -715,6 +717,146 @@ func TestAccIncidentRelayNegativeValidation(t *testing.T) {
 	}
 }
 
+func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tfing-g-" + suffix,
+		"name":        "Ingest group " + suffix,
+		"description": "Alert ingestion acceptance group.",
+		"active":      true,
+	})
+	teamData := testAccCreateResource(t, ctx, resourceTeam(), config, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, groupData.Id()),
+		"slug":                       "tfing-t-" + suffix,
+		"name":                       "Ingest team " + suffix,
+		"description":                "Alert ingestion acceptance team.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 2,
+		"active":                     true,
+	})
+	teamID := testAccIDAsInt(t, teamData.Id())
+
+	rotationData := testAccCreateResource(t, ctx, resourceRotation(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Ingest rotation " + suffix,
+		"description":               "Alert ingestion rotation.",
+		"start_at":                  "2026-07-13T09:00:00",
+		"rotation_type":             "weekly",
+		"interval_value":            1,
+		"interval_unit":             "weeks",
+		"handoff_time":              "09:00",
+		"handoff_weekday":           0,
+		"timezone":                  "UTC",
+		"reminder_interval_seconds": 300,
+		"enabled":                   true,
+		"add_team_members":          false,
+	})
+	rotationID := testAccIDAsInt(t, rotationData.Id())
+
+	serviceData := testAccCreateResource(t, ctx, resourceService(), config, map[string]interface{}{
+		"team_id":      teamID,
+		"slug":         "tfing-s-" + suffix,
+		"name":         "Ingest svc " + suffix,
+		"description":  "Alert ingestion service.",
+		"service_type": "api",
+		"environment":  "testing",
+		"criticality":  "high",
+		"tier":         "tier_2",
+		"labels_json":  `{"managed_by":"terraform","test":"ingestion"}`,
+		"metadata_json": `{
+			"purpose": "alert-ingestion-smoke"
+		}`,
+		"enabled": true,
+		"public":  false,
+	})
+	serviceID := testAccIDAsInt(t, serviceData.Id())
+
+	routeData := testAccCreateResource(t, ctx, resourceRoute(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Ingest route " + suffix,
+		"source":                    "alertmanager",
+		"rotation_id":               rotationID,
+		"service_id":                serviceID,
+		"notification_channel_mode": "route_only",
+		"matchers_json":             `{"labels":{"severity":"critical","team":"terraform"}}`,
+		"integration_config_json":   `{}`,
+		"group_by":                  testAccStringSet("alertname", "instance"),
+		"enabled":                   true,
+	})
+	routeID := testAccIDAsInt(t, routeData.Id())
+	intakeToken := strings.TrimSpace(routeData.Get("intake_token").(string))
+	if intakeToken == "" {
+		t.Fatal("route intake_token is empty")
+	}
+
+	alertName := "TerraformIngestion" + suffix
+	payload := map[string]interface{}{
+		"status": "firing",
+		"alerts": []map[string]interface{}{
+			{
+				"status": "firing",
+				"labels": map[string]interface{}{
+					"alertname": alertName,
+					"severity":  "critical",
+					"instance":  "host1",
+					"team":      "terraform",
+				},
+				"annotations": map[string]interface{}{
+					"summary":     "Terraform ingestion smoke",
+					"description": "Created by Terraform provider acceptance tests.",
+				},
+				"fingerprint": "tf-ingestion-" + suffix,
+				"startsAt":    "2026-07-13T10:00:00Z",
+			},
+		},
+	}
+
+	var ingestResponse []map[string]interface{}
+	testAccPostAPIWithBearer(t, ctx, config, "/api/integrations/alertmanager", intakeToken, payload, &ingestResponse)
+	if len(ingestResponse) != 1 {
+		t.Fatalf("ingest response length = %d, want 1: %#v", len(ingestResponse), ingestResponse)
+	}
+	item := ingestResponse[0]
+	testAccRequireAPIBoolField(t, item, "created", true)
+	testAccRequireAPIStringField(t, item, "outcome", "created")
+	testAccRequireAPIStringField(t, item, "processing_status", "completed")
+	testAccRequireAPIStringField(t, item, "status", "firing")
+	testAccRequireAPIIntField(t, item, "team_id", teamID)
+	testAccRequireAPIIntField(t, item, "route_id", routeID)
+	testAccRequireAPIIntField(t, item, "rotation_id", rotationID)
+	groupID, ok := intFromInterface(item["group_id"])
+	if !ok || groupID <= 0 {
+		t.Fatalf("group_id = %#v, want positive int", item["group_id"])
+	}
+	if alertID, ok := intFromInterface(item["alert_id"]); !ok || alertID <= 0 {
+		t.Fatalf("alert_id = %#v, want positive int", item["alert_id"])
+	}
+	traceID := strings.TrimSpace(fmt.Sprintf("%v", item["trace_id"]))
+	if traceID == "" {
+		t.Fatal("trace_id is empty")
+	}
+
+	alertGroup := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/%d", groupID))
+	testAccRequireAPIIntField(t, alertGroup, "team_id", teamID)
+	testAccRequireAPIIntField(t, alertGroup, "route_id", routeID)
+	testAccRequireAPIIntField(t, alertGroup, "rotation_id", rotationID)
+	testAccRequireAPIIntField(t, alertGroup, "service_id", serviceID)
+	testAccRequireAPIStringField(t, alertGroup, "source", "alertmanager")
+	testAccRequireAPIStringField(t, alertGroup, "status", "firing")
+	testAccRequireAPIStringField(t, alertGroup, "severity", "critical")
+	testAccRequireAPIStringField(t, alertGroup, "title", "Terraform ingestion smoke")
+	testAccRequireAPINestedStringField(t, alertGroup, "labels", "alertname", alertName)
+
+	trace := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/explain/%s", traceID))
+	testAccRequireAPIStringField(t, trace, "trace_id", traceID)
+	testAccRequireAPIStringField(t, trace, "status", "completed")
+	testAccRequireAPIStringField(t, trace, "outcome", "created")
+	testAccRequireAPIIntField(t, trace, "group_id", groupID)
+}
+
 func TestAccIncidentRelayDriftAndReadAfterDelete(t *testing.T) {
 	config := testAccProviderConfig(t)
 	ctx := context.Background()
@@ -1161,11 +1303,64 @@ func testAccReadAPIObject(t *testing.T, ctx context.Context, config *Config, pat
 	return response
 }
 
+func testAccPostAPIWithBearer(t *testing.T, ctx context.Context, config *Config, path, token string, body interface{}, out interface{}) {
+	t.Helper()
+
+	requestURL, err := joinURL(config.Client.baseURL, path)
+	if err != nil {
+		t.Fatalf("join %s: %v", path, err)
+	}
+	rawBody, err := json.Marshal(body)
+	if err != nil {
+		t.Fatalf("marshal %s body: %v", path, err)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, requestURL, bytes.NewReader(rawBody))
+	if err != nil {
+		t.Fatalf("create POST %s request: %v", path, err)
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("User-Agent", config.Client.userAgent)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := config.Client.httpClient.Do(req)
+	if err != nil {
+		t.Fatalf("POST %s failed: %v", path, err)
+	}
+	defer resp.Body.Close()
+
+	rawResponse, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("read POST %s response: %v", path, err)
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		t.Fatalf("POST %s returned %d: %s", path, resp.StatusCode, string(rawResponse))
+	}
+	if out == nil {
+		return
+	}
+	if err := json.Unmarshal(rawResponse, out); err != nil {
+		t.Fatalf("decode POST %s response: %v; body: %s", path, err, string(rawResponse))
+	}
+}
+
 func testAccRequireAPIStringField(t *testing.T, response map[string]interface{}, field, want string) {
 	t.Helper()
 
 	if got, ok := response[field].(string); !ok || got != want {
 		t.Fatalf("api %s = %#v, want %q", field, response[field], want)
+	}
+}
+
+func testAccRequireAPINestedStringField(t *testing.T, response map[string]interface{}, field, nestedField, want string) {
+	t.Helper()
+
+	nested, ok := response[field].(map[string]interface{})
+	if !ok {
+		t.Fatalf("api %s = %#v, want object", field, response[field])
+	}
+	if got, ok := nested[nestedField].(string); !ok || got != want {
+		t.Fatalf("api %s.%s = %#v, want %q", field, nestedField, nested[nestedField], want)
 	}
 }
 
