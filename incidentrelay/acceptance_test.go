@@ -1,10 +1,16 @@
 package incidentrelay
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"reflect"
+	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -403,6 +409,164 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 }
 
+func TestAccIncidentRelayTerraformCLI(t *testing.T) {
+	config := testAccProviderConfig(t)
+
+	terraformPath, err := exec.LookPath("terraform")
+	if err != nil {
+		t.Skip("terraform CLI is required for this acceptance test")
+	}
+
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupSlug := "tfcli-g-" + suffix
+	groupName := "CLI group " + suffix
+	groupDescription := "Terraform CLI acceptance group."
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        groupSlug,
+		"name":        groupName,
+		"description": groupDescription,
+		"active":      true,
+	})
+
+	workDir := t.TempDir()
+	repoRoot := testAccRepoRoot(t)
+	providerDir := filepath.Join(t.TempDir(), "provider")
+	if err := os.MkdirAll(providerDir, 0o755); err != nil {
+		t.Fatalf("create provider override directory: %v", err)
+	}
+
+	providerBinary := filepath.Join(providerDir, "terraform-provider-incidentrelay")
+	if runtime.GOOS == "windows" {
+		providerBinary += ".exe"
+	}
+	testAccRunCommand(t, repoRoot, nil, "go", "build", "-o", providerBinary, ".")
+
+	cliConfigPath := filepath.Join(workDir, "terraform.rc")
+	cliConfig := fmt.Sprintf(`provider_installation {
+  dev_overrides {
+    "registry.terraform.io/roxy-wi/incidentrelay" = %s
+  }
+  direct {}
+}
+`, strconv.Quote(providerDir))
+	if err := os.WriteFile(cliConfigPath, []byte(cliConfig), 0o600); err != nil {
+		t.Fatalf("write Terraform CLI config: %v", err)
+	}
+
+	mainTF := fmt.Sprintf(`terraform {
+  required_version = ">= 1.4.0"
+
+  required_providers {
+    incidentrelay = {
+      source = "roxy-wi/incidentrelay"
+    }
+  }
+}
+
+provider "incidentrelay" {}
+
+resource "incidentrelay_group" "cli" {
+  slug        = %s
+  name        = %s
+  description = %s
+  active      = true
+}
+
+resource "incidentrelay_team" "cli" {
+  group_id                   = incidentrelay_group.cli.id
+  slug                       = %s
+  name                       = %s
+  description                = "Terraform CLI acceptance team."
+  escalation_enabled         = true
+  escalation_after_reminders = 2
+  active                     = true
+}
+
+resource "incidentrelay_service" "cli" {
+  team_id        = incidentrelay_team.cli.id
+  slug           = %s
+  name           = %s
+  description    = "Terraform CLI acceptance service."
+  service_type   = "api"
+  environment    = "testing"
+  criticality    = "high"
+  tier           = "tier_2"
+  status         = "operational"
+  status_source  = "manual"
+  status_message = "Managed by Terraform CLI acceptance."
+  labels_json    = jsonencode({ managed_by = "terraform", test = "cli" })
+  tags           = ["terraform", "cli"]
+  metadata_json  = jsonencode({ purpose = "cli-acceptance" })
+  enabled        = true
+  public         = false
+  public_name    = %s
+  public_description = "Terraform CLI acceptance public service."
+}
+
+output "team_id" {
+  value = incidentrelay_team.cli.id
+}
+
+output "service_id" {
+  value = incidentrelay_service.cli.id
+}
+`,
+		strconv.Quote(groupSlug),
+		strconv.Quote(groupName),
+		strconv.Quote(groupDescription),
+		strconv.Quote("tfcli-t-"+suffix),
+		strconv.Quote("CLI team "+suffix),
+		strconv.Quote("tfcli-svc-"+suffix),
+		strconv.Quote("CLI service "+suffix),
+		strconv.Quote("CLI public "+suffix),
+	)
+	if err := os.WriteFile(filepath.Join(workDir, "main.tf"), []byte(mainTF), 0o600); err != nil {
+		t.Fatalf("write Terraform config: %v", err)
+	}
+
+	terraformEnv := append(os.Environ(),
+		"TF_CLI_CONFIG_FILE="+cliConfigPath,
+		"TF_IN_AUTOMATION=1",
+		"TF_INPUT=0",
+	)
+
+	t.Cleanup(func() {
+		result := testAccRunCommandResult(workDir, terraformEnv, terraformPath, "destroy", "-auto-approve", "-input=false", "-no-color")
+		if result.ExitCode != 0 {
+			t.Errorf("terraform destroy failed with exit code %d:\n%s", result.ExitCode, result.Output)
+		}
+	})
+
+	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "validate", "-no-color")
+	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "import", "-input=false", "-no-color", "incidentrelay_group.cli", groupData.Id())
+	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "apply", "-auto-approve", "-input=false", "-no-color")
+
+	stateList := testAccRunCommand(t, workDir, terraformEnv, terraformPath, "state", "list")
+	for _, resource := range []string{
+		"incidentrelay_group.cli",
+		"incidentrelay_team.cli",
+		"incidentrelay_service.cli",
+	} {
+		if !strings.Contains(stateList, resource) {
+			t.Fatalf("terraform state does not contain %s:\n%s", resource, stateList)
+		}
+	}
+
+	for _, outputName := range []string{"team_id", "service_id"} {
+		output := strings.TrimSpace(testAccRunCommand(t, workDir, terraformEnv, terraformPath, "output", "-raw", outputName))
+		if output == "" {
+			t.Fatalf("terraform output %s is empty", outputName)
+		}
+	}
+
+	plan := testAccRunCommandResult(workDir, terraformEnv, terraformPath, "plan", "-input=false", "-detailed-exitcode", "-no-color")
+	if plan.ExitCode != 0 {
+		t.Fatalf("terraform plan after apply returned exit code %d, want 0:\n%s", plan.ExitCode, plan.Output)
+	}
+}
+
 func testAccProviderConfig(t *testing.T) *Config {
 	t.Helper()
 
@@ -555,4 +719,55 @@ func testAccStringSet(values ...string) []interface{} {
 		items = append(items, value)
 	}
 	return items
+}
+
+func testAccRepoRoot(t *testing.T) string {
+	t.Helper()
+
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("cannot resolve test file path")
+	}
+	return filepath.Dir(filepath.Dir(file))
+}
+
+type testAccCommandResult struct {
+	Output   string
+	ExitCode int
+}
+
+func testAccRunCommand(t *testing.T, dir string, env []string, name string, args ...string) string {
+	t.Helper()
+
+	result := testAccRunCommandResult(dir, env, name, args...)
+	if result.ExitCode != 0 {
+		t.Fatalf("%s %s failed with exit code %d:\n%s", name, strings.Join(args, " "), result.ExitCode, result.Output)
+	}
+	return result.Output
+}
+
+func testAccRunCommandResult(dir string, env []string, name string, args ...string) testAccCommandResult {
+	cmd := exec.Command(name, args...)
+	if dir != "" {
+		cmd.Dir = dir
+	}
+	if env != nil {
+		cmd.Env = env
+	}
+
+	var output bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &output
+
+	err := cmd.Run()
+	if err == nil {
+		return testAccCommandResult{Output: output.String(), ExitCode: 0}
+	}
+
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		return testAccCommandResult{Output: output.String(), ExitCode: exitErr.ExitCode()}
+	}
+
+	return testAccCommandResult{Output: output.String() + err.Error(), ExitCode: -1}
 }

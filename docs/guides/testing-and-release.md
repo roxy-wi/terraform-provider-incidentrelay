@@ -32,6 +32,11 @@ The acceptance workflow starts a real IncidentRelay container with Docker,
 creates a temporary admin user, and runs the provider acceptance tests with
 `INCIDENTRELAY_ACC=1`.
 
+Acceptance also installs Terraform CLI and runs a real CLI smoke flow with a
+locally built provider binary through Terraform's development override
+mechanism. That test covers `terraform validate`, `import`, `apply`,
+idempotent `plan -detailed-exitcode`, and `destroy`.
+
 The workflow first tries to pull `ghcr.io/roxy-wi/incidentrelay:latest`
 anonymously, which is the expected path for the public package. If that fails,
 it logs in to GHCR with `GITHUB_TOKEN` and `packages: read`, retries the pull,

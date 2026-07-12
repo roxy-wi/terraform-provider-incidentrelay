@@ -40,6 +40,10 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
       - name: Prepare IncidentRelay image
         env:
           GHCR_TOKEN: ${{ github.token }}
