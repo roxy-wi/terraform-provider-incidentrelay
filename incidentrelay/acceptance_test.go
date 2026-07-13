@@ -618,6 +618,175 @@ func TestAccIncidentRelayRouteBehavior(t *testing.T) {
 	testAccRequireAPIStringListField(t, updatedRouteAPI, "group_by", "route_id", "source")
 }
 
+func TestAccIncidentRelayOptionalLinkClearing(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tfclear-g-" + suffix,
+		"name":        "Clear group " + suffix,
+		"description": "Optional link clearing group.",
+		"active":      true,
+	})
+	teamData := testAccCreateResource(t, ctx, resourceTeam(), config, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, groupData.Id()),
+		"slug":                       "tfclear-t-" + suffix,
+		"name":                       "Clear team " + suffix,
+		"description":                "Optional link clearing team.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 2,
+		"active":                     true,
+	})
+	teamID := testAccIDAsInt(t, teamData.Id())
+
+	channelData := testAccCreateResource(t, ctx, resourceChannel(), config, map[string]interface{}{
+		"team_id":      teamID,
+		"name":         "Clear email " + suffix,
+		"channel_type": "email",
+		"config_json":  `{"notify_on_severities":["critical"]}`,
+		"enabled":      true,
+	})
+	channelID := testAccIDAsInt(t, channelData.Id())
+
+	rotationData := testAccCreateResource(t, ctx, resourceRotation(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Clear rotation " + suffix,
+		"description":               "Optional link clearing rotation.",
+		"start_at":                  "2026-07-13T09:00:00",
+		"rotation_type":             "weekly",
+		"interval_value":            1,
+		"interval_unit":             "weeks",
+		"handoff_time":              "09:00",
+		"handoff_weekday":           0,
+		"timezone":                  "UTC",
+		"reminder_interval_seconds": 300,
+		"enabled":                   true,
+		"add_team_members":          false,
+	})
+	rotationID := testAccIDAsInt(t, rotationData.Id())
+
+	escalationPolicyData := testAccCreateResource(t, ctx, resourceEscalationPolicy(), config, map[string]interface{}{
+		"team_id":      teamID,
+		"name":         "Clear policy " + suffix,
+		"description":  "Optional link clearing policy.",
+		"enabled":      true,
+		"repeat_count": 0,
+	})
+	escalationPolicyID := testAccIDAsInt(t, escalationPolicyData.Id())
+
+	notificationPolicyData := testAccCreateResource(t, ctx, resourceNotificationPolicy(), config, map[string]interface{}{
+		"team_id":     teamID,
+		"name":        "Clear notif " + suffix,
+		"description": "Optional link clearing notification policy.",
+		"enabled":     true,
+	})
+	notificationPolicyID := testAccIDAsInt(t, notificationPolicyData.Id())
+
+	serviceData := testAccCreateResource(t, ctx, resourceService(), config, map[string]interface{}{
+		"team_id":                      teamID,
+		"slug":                         "tfclear-s-" + suffix,
+		"name":                         "Clear service " + suffix,
+		"description":                  "Optional link clearing service.",
+		"service_type":                 "api",
+		"environment":                  "testing",
+		"criticality":                  "high",
+		"tier":                         "tier_2",
+		"status":                       "operational",
+		"status_source":                "manual",
+		"default_rotation_id":          rotationID,
+		"default_escalation_policy_id": escalationPolicyID,
+		"notification_policy_id":       notificationPolicyID,
+		"labels_json":                  `{"managed_by":"terraform","test":"clear"}`,
+		"tags":                         testAccStringSet("terraform", "clear"),
+		"metadata_json":                `{"purpose":"optional-link-clearing"}`,
+		"enabled":                      true,
+		"public":                       false,
+	})
+	serviceID := testAccIDAsInt(t, serviceData.Id())
+
+	serviceAPI := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/services/%d", serviceID))
+	testAccRequireAPIIntField(t, serviceAPI, "default_rotation_id", rotationID)
+	testAccRequireAPIIntField(t, serviceAPI, "default_escalation_policy_id", escalationPolicyID)
+	testAccRequireAPIIntField(t, serviceAPI, "notification_policy_id", notificationPolicyID)
+
+	testAccUpdateResource(t, ctx, resourceService(), serviceData, config, map[string]interface{}{
+		"default_rotation_id":          nil,
+		"default_escalation_policy_id": nil,
+		"notification_policy_id":       nil,
+	}, map[string]interface{}{
+		"default_rotation_id":          0,
+		"default_escalation_policy_id": 0,
+		"notification_policy_id":       0,
+	})
+
+	clearedServiceAPI := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/services/%d", serviceID))
+	testAccRequireAPINilField(t, clearedServiceAPI, "default_rotation_id")
+	testAccRequireAPINilField(t, clearedServiceAPI, "default_escalation_policy_id")
+	testAccRequireAPINilField(t, clearedServiceAPI, "notification_policy_id")
+
+	routeData := testAccCreateResource(t, ctx, resourceRoute(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Clear route " + suffix,
+		"source":                    "alertmanager",
+		"rotation_id":               rotationID,
+		"service_id":                serviceID,
+		"escalation_policy_id":      escalationPolicyID,
+		"channel_ids":               testAccIntSet(channelID),
+		"notification_channel_mode": "service_policy_plus_route",
+		"matchers_json":             `{"labels":{"team":"terraform","severity":"critical"}}`,
+		"integration_config_json":   `{}`,
+		"group_by":                  testAccStringSet("alertname", "instance"),
+		"enabled":                   true,
+	})
+	routeID := testAccIDAsInt(t, routeData.Id())
+
+	routeAPI := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/routes/%d", routeID))
+	testAccRequireAPIIntField(t, routeAPI, "rotation_id", rotationID)
+	testAccRequireAPIIntField(t, routeAPI, "service_id", serviceID)
+	testAccRequireAPIIntField(t, routeAPI, "escalation_policy_id", escalationPolicyID)
+	testAccRequireAPIChannelIDs(t, routeAPI, channelID)
+
+	serviceMatchRuleData := testAccCreateResource(t, ctx, resourceServiceMatchRule(), config, map[string]interface{}{
+		"team_id":       teamID,
+		"service_id":    serviceID,
+		"route_id":      routeID,
+		"position":      1,
+		"name":          "Clear match " + suffix,
+		"description":   "Optional link clearing match rule.",
+		"matchers_json": `{"labels":{"service":"api"}}`,
+		"enabled":       true,
+	})
+	testAccUpdateResource(t, ctx, resourceServiceMatchRule(), serviceMatchRuleData, config, map[string]interface{}{
+		"route_id": nil,
+	}, map[string]interface{}{
+		"route_id": 0,
+		"enabled":  true,
+	})
+
+	testAccUpdateResource(t, ctx, resourceRoute(), routeData, config, map[string]interface{}{
+		"rotation_id":               nil,
+		"service_id":                nil,
+		"escalation_policy_id":      nil,
+		"channel_ids":               testAccIntSet(),
+		"notification_channel_mode": "route_only",
+	}, map[string]interface{}{
+		"rotation_id":               0,
+		"service_id":                0,
+		"escalation_policy_id":      0,
+		"notification_channel_mode": "route_only",
+		"escalation_mode":           "rotation",
+	})
+
+	clearedRouteAPI := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/routes/%d", routeID))
+	testAccRequireAPINilField(t, clearedRouteAPI, "rotation_id")
+	testAccRequireAPINilField(t, clearedRouteAPI, "service_id")
+	testAccRequireAPINilField(t, clearedRouteAPI, "escalation_policy_id")
+	testAccRequireAPIChannelIDs(t, clearedRouteAPI)
+	testAccRequireAPIStringField(t, clearedRouteAPI, "notification_channel_mode", "route_only")
+	testAccRequireAPIStringField(t, clearedRouteAPI, "escalation_mode", "rotation")
+}
+
 func TestAccIncidentRelayNegativeValidation(t *testing.T) {
 	config := testAccProviderConfig(t)
 	ctx := context.Background()

@@ -238,6 +238,33 @@ func TestBuildPayloadOmitsUnsetOptionalInt(t *testing.T) {
 	}
 }
 
+func TestBuildPayloadClearsChangedOptionalIntOnUpdate(t *testing.T) {
+	fields := []fieldDef{
+		reqString("name", "Name."),
+		optInt("rotation_id", "Rotation id."),
+	}
+	data := schema.TestResourceDataRaw(t, schemaFromFields(fields), map[string]interface{}{
+		"name":        "route",
+		"rotation_id": 42,
+	})
+	if err := data.Set("rotation_id", nil); err != nil {
+		t.Fatalf("set rotation_id: %v", err)
+	}
+
+	payload, err := buildPayload(data, fields, []string{"name", "rotation_id"}, true)
+	if err != nil {
+		t.Fatalf("buildPayload returned error: %v", err)
+	}
+
+	value, ok := payload["rotation_id"]
+	if !ok {
+		t.Fatal("payload[rotation_id] missing, want explicit nil")
+	}
+	if value != nil {
+		t.Fatalf("payload[rotation_id] = %#v, want nil", value)
+	}
+}
+
 func TestBuildPayloadRejectsInvalidJSON(t *testing.T) {
 	fields := []fieldDef{
 		reqJSON("config_json", "config", "Config."),
