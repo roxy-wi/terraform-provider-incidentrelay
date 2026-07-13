@@ -265,6 +265,56 @@ func TestBuildPayloadClearsChangedOptionalIntOnUpdate(t *testing.T) {
 	}
 }
 
+func TestBuildPayloadOmitsUnsetOptionalString(t *testing.T) {
+	fields := []fieldDef{
+		reqString("name", "Name."),
+		optString("public_name", "Public name."),
+		optStringDefault("status", "operational", "Status."),
+	}
+	data := schema.TestResourceDataRaw(t, schemaFromFields(fields), map[string]interface{}{
+		"name": "service",
+	})
+
+	payload, err := buildPayload(data, fields, []string{"name", "public_name", "status"}, false)
+	if err != nil {
+		t.Fatalf("buildPayload returned error: %v", err)
+	}
+
+	if _, ok := payload["public_name"]; ok {
+		t.Fatalf("payload[public_name] = %#v, want omitted", payload["public_name"])
+	}
+	if got, want := payload["status"], "operational"; got != want {
+		t.Fatalf("payload[status] = %#v, want %#v", got, want)
+	}
+}
+
+func TestBuildPayloadClearsChangedOptionalStringOnUpdate(t *testing.T) {
+	fields := []fieldDef{
+		reqString("name", "Name."),
+		optString("public_name", "Public name."),
+	}
+	data := schema.TestResourceDataRaw(t, schemaFromFields(fields), map[string]interface{}{
+		"name":        "service",
+		"public_name": "Public service",
+	})
+	if err := data.Set("public_name", ""); err != nil {
+		t.Fatalf("set public_name: %v", err)
+	}
+
+	payload, err := buildPayload(data, fields, []string{"name", "public_name"}, true)
+	if err != nil {
+		t.Fatalf("buildPayload returned error: %v", err)
+	}
+
+	value, ok := payload["public_name"]
+	if !ok {
+		t.Fatal("payload[public_name] missing, want explicit nil")
+	}
+	if value != nil {
+		t.Fatalf("payload[public_name] = %#v, want nil", value)
+	}
+}
+
 func TestBuildPayloadRejectsInvalidJSON(t *testing.T) {
 	fields := []fieldDef{
 		reqJSON("config_json", "config", "Config."),
