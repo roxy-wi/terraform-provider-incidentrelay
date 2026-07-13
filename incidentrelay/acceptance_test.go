@@ -793,6 +793,7 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 	}
 
 	alertName := "TerraformIngestion" + suffix
+	alertFingerprint := "tf-ingestion-" + suffix
 	payload := map[string]interface{}{
 		"status": "firing",
 		"alerts": []map[string]interface{}{
@@ -808,7 +809,7 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 					"summary":     "Terraform ingestion smoke",
 					"description": "Created by Terraform provider acceptance tests.",
 				},
-				"fingerprint": "tf-ingestion-" + suffix,
+				"fingerprint": alertFingerprint,
 				"startsAt":    "2026-07-13T10:00:00Z",
 			},
 		},
@@ -831,7 +832,8 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 	if !ok || groupID <= 0 {
 		t.Fatalf("group_id = %#v, want positive int", item["group_id"])
 	}
-	if alertID, ok := intFromInterface(item["alert_id"]); !ok || alertID <= 0 {
+	alertID, ok := intFromInterface(item["alert_id"])
+	if !ok || alertID <= 0 {
 		t.Fatalf("alert_id = %#v, want positive int", item["alert_id"])
 	}
 	traceID := strings.TrimSpace(fmt.Sprintf("%v", item["trace_id"]))
@@ -855,6 +857,80 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 	testAccRequireAPIStringField(t, trace, "status", "completed")
 	testAccRequireAPIStringField(t, trace, "outcome", "created")
 	testAccRequireAPIIntField(t, trace, "group_id", groupID)
+
+	resolvedPayload := map[string]interface{}{
+		"status": "resolved",
+		"alerts": []map[string]interface{}{
+			{
+				"status": "resolved",
+				"labels": map[string]interface{}{
+					"alertname": alertName,
+					"severity":  "critical",
+					"instance":  "host1",
+					"team":      "terraform",
+				},
+				"annotations": map[string]interface{}{
+					"summary":     "Terraform ingestion smoke",
+					"description": "Resolved by Terraform provider acceptance tests.",
+				},
+				"fingerprint": alertFingerprint,
+				"startsAt":    "2026-07-13T10:00:00Z",
+				"endsAt":      "2026-07-13T10:15:00Z",
+			},
+		},
+	}
+
+	var resolvedResponse []map[string]interface{}
+	testAccPostAPIWithBearer(t, ctx, config, "/api/integrations/alertmanager", intakeToken, resolvedPayload, &resolvedResponse)
+	if len(resolvedResponse) != 1 {
+		t.Fatalf("resolved ingest response length = %d, want 1: %#v", len(resolvedResponse), resolvedResponse)
+	}
+	resolvedItem := resolvedResponse[0]
+	testAccRequireAPIBoolField(t, resolvedItem, "created", false)
+	testAccRequireAPIStringField(t, resolvedItem, "outcome", "updated")
+	testAccRequireAPIStringField(t, resolvedItem, "processing_status", "completed")
+	testAccRequireAPIStringField(t, resolvedItem, "status", "resolved")
+	testAccRequireAPIIntField(t, resolvedItem, "team_id", teamID)
+	testAccRequireAPIIntField(t, resolvedItem, "route_id", routeID)
+	testAccRequireAPIIntField(t, resolvedItem, "rotation_id", rotationID)
+	testAccRequireAPIIntField(t, resolvedItem, "group_id", groupID)
+	testAccRequireAPIIntField(t, resolvedItem, "alert_id", alertID)
+	resolvedTraceID := strings.TrimSpace(fmt.Sprintf("%v", resolvedItem["trace_id"]))
+	if resolvedTraceID == "" {
+		t.Fatal("resolved trace_id is empty")
+	}
+
+	resolvedAlertGroup := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/%d", groupID))
+	testAccRequireAPIIntField(t, resolvedAlertGroup, "team_id", teamID)
+	testAccRequireAPIIntField(t, resolvedAlertGroup, "route_id", routeID)
+	testAccRequireAPIIntField(t, resolvedAlertGroup, "rotation_id", rotationID)
+	testAccRequireAPIIntField(t, resolvedAlertGroup, "service_id", serviceID)
+	testAccRequireAPIStringField(t, resolvedAlertGroup, "source", "alertmanager")
+	testAccRequireAPIStringField(t, resolvedAlertGroup, "status", "resolved")
+	testAccRequireAPIStringField(t, resolvedAlertGroup, "severity", "critical")
+	testAccRequireAPIStringField(t, resolvedAlertGroup, "title", "Terraform ingestion smoke")
+	testAccRequireAPINestedStringField(t, resolvedAlertGroup, "labels", "alertname", alertName)
+
+	childAlerts, ok := resolvedAlertGroup["alerts"].([]interface{})
+	if !ok {
+		t.Fatalf("api alerts = %#v, want list", resolvedAlertGroup["alerts"])
+	}
+	if len(childAlerts) != 1 {
+		t.Fatalf("child alert count = %d, want 1: %#v", len(childAlerts), childAlerts)
+	}
+	childAlert, ok := childAlerts[0].(map[string]interface{})
+	if !ok {
+		t.Fatalf("child alert = %#v, want object", childAlerts[0])
+	}
+	testAccRequireAPIIntField(t, childAlert, "id", alertID)
+	testAccRequireAPIStringField(t, childAlert, "status", "resolved")
+
+	resolvedTrace := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/explain/%s", resolvedTraceID))
+	testAccRequireAPIStringField(t, resolvedTrace, "trace_id", resolvedTraceID)
+	testAccRequireAPIStringField(t, resolvedTrace, "status", "completed")
+	testAccRequireAPIStringField(t, resolvedTrace, "outcome", "updated")
+	testAccRequireAPIIntField(t, resolvedTrace, "group_id", groupID)
+	testAccRequireAPIIntField(t, resolvedTrace, "alert_id", alertID)
 }
 
 func TestAccIncidentRelayDriftAndReadAfterDelete(t *testing.T) {
