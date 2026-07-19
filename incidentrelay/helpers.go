@@ -157,6 +157,52 @@ func valueToJSONString(value interface{}) (string, error) {
 	return normalizeJSONString(string(encoded))
 }
 
+func restoreMaskedJSONValues(currentRaw string, remote interface{}, placeholder string) (interface{}, error) {
+	currentRaw = strings.TrimSpace(currentRaw)
+	if currentRaw == "" {
+		return remote, nil
+	}
+
+	var current interface{}
+	if err := json.Unmarshal([]byte(currentRaw), &current); err != nil {
+		return nil, err
+	}
+
+	return restoreMaskedValue(current, remote, placeholder), nil
+}
+
+func restoreMaskedValue(current, remote interface{}, placeholder string) interface{} {
+	if remoteString, ok := remote.(string); ok && remoteString == placeholder {
+		if current != nil {
+			return current
+		}
+		return remote
+	}
+
+	switch remoteValue := remote.(type) {
+	case map[string]interface{}:
+		currentValue, _ := current.(map[string]interface{})
+		restored := make(map[string]interface{}, len(remoteValue))
+		for key, value := range remoteValue {
+			restored[key] = restoreMaskedValue(currentValue[key], value, placeholder)
+		}
+		return restored
+	case []interface{}:
+		currentValue, _ := current.([]interface{})
+		restored := make([]interface{}, len(remoteValue))
+		for index, value := range remoteValue {
+			var currentItem interface{}
+			if index < len(currentValue) {
+				currentItem = currentValue[index]
+			}
+			restored[index] = restoreMaskedValue(currentItem, value, placeholder)
+		}
+		return restored
+	default:
+		return remote
+	}
+}
+
 func setIDFromResponse(d *schema.ResourceData, data map[string]interface{}) error {
 	id, ok := data["id"]
 	if !ok {

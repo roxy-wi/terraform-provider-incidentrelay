@@ -101,6 +101,63 @@ func TestJSONStringToValue(t *testing.T) {
 	}
 }
 
+func TestRestoreMaskedJSONValues(t *testing.T) {
+	current := `{
+		"mode": "bot_api",
+		"connection_mode": "socket_mode",
+		"bot_token": "xoxb-current",
+		"app_token": "xapp-current",
+		"signing_secret": "signing-current",
+		"channel_id": "C123",
+		"nested": [{"secret": "keep-me"}]
+	}`
+	remote := map[string]interface{}{
+		"mode":            "bot_api",
+		"connection_mode": "socket_mode",
+		"bot_token":       incidentRelaySecretPlaceholder,
+		"app_token":       incidentRelaySecretPlaceholder,
+		"signing_secret":  incidentRelaySecretPlaceholder,
+		"channel_id":      "C456",
+		"nested": []interface{}{
+			map[string]interface{}{"secret": incidentRelaySecretPlaceholder},
+		},
+	}
+
+	got, err := restoreMaskedJSONValues(current, remote, incidentRelaySecretPlaceholder)
+	if err != nil {
+		t.Fatalf("restoreMaskedJSONValues returned error: %v", err)
+	}
+
+	want := map[string]interface{}{
+		"mode":            "bot_api",
+		"connection_mode": "socket_mode",
+		"bot_token":       "xoxb-current",
+		"app_token":       "xapp-current",
+		"signing_secret":  "signing-current",
+		"channel_id":      "C456",
+		"nested": []interface{}{
+			map[string]interface{}{"secret": "keep-me"},
+		},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("restored JSON = %#v, want %#v", got, want)
+	}
+}
+
+func TestRestoreMaskedJSONValuesWithoutCurrentState(t *testing.T) {
+	remote := map[string]interface{}{
+		"bot_token": incidentRelaySecretPlaceholder,
+	}
+
+	got, err := restoreMaskedJSONValues("", remote, incidentRelaySecretPlaceholder)
+	if err != nil {
+		t.Fatalf("restoreMaskedJSONValues returned error: %v", err)
+	}
+	if !reflect.DeepEqual(got, remote) {
+		t.Fatalf("restored JSON = %#v, want unchanged %#v", got, remote)
+	}
+}
+
 func TestValueToJSONStringCanonicalizesAPIValues(t *testing.T) {
 	if got, err := valueToJSONString(nil); err != nil || got != "" {
 		t.Fatalf("valueToJSONString nil = %q, %v; want empty nil", got, err)

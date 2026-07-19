@@ -32,9 +32,102 @@ func TestAccIncidentRelayVersionDataSource(t *testing.T) {
 	if got := data.Id(); got != "version" {
 		t.Fatalf("id = %q, want version", got)
 	}
-	if got := data.Get("service_version").(string); strings.TrimSpace(got) == "" {
+	gotVersion := strings.TrimSpace(data.Get("service_version").(string))
+	if gotVersion == "" {
 		t.Fatal("service_version is empty")
 	}
+	if expected := strings.TrimSpace(os.Getenv("INCIDENTRELAY_EXPECTED_VERSION")); expected != "" &&
+		!strings.HasPrefix(gotVersion, expected) {
+		t.Fatalf("service_version = %q, want prefix %q", gotVersion, expected)
+	}
+}
+
+func TestAccIncidentRelay12Compatibility(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tf12-g-" + suffix,
+		"name":        "IR 1.2 group " + suffix,
+		"description": "IncidentRelay 1.2 provider compatibility test.",
+		"active":      true,
+	})
+	teamData := testAccCreateResource(t, ctx, resourceTeam(), config, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, groupData.Id()),
+		"slug":                       "tf12-t-" + suffix,
+		"name":                       "IR 1.2 team " + suffix,
+		"description":                "IncidentRelay 1.2 provider compatibility test.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 2,
+		"active":                     true,
+	})
+	teamID := testAccIDAsInt(t, teamData.Id())
+
+	slackConfig := `{
+		"mode": "bot_api",
+		"connection_mode": "socket_mode",
+		"bot_token": "xoxb-terraform-acceptance",
+		"app_token": "xapp-terraform-acceptance",
+		"channel_id": "C0123456789"
+	}`
+	channelResource := resourceChannel()
+	channelData := testAccCreateResource(t, ctx, channelResource, config, map[string]interface{}{
+		"team_id":      teamID,
+		"name":         "IR 1.2 Slack " + suffix,
+		"channel_type": "slack",
+		"config_json":  slackConfig,
+		"enabled":      true,
+	})
+	if got, want := channelData.Get("config_json"), normalizeJSONStringState(slackConfig); got != want {
+		t.Fatalf("Slack config after masked API refresh = %v, want %v", got, want)
+	}
+
+	channelAPI := testAccReadAPIObject(
+		t,
+		ctx,
+		config,
+		fmt.Sprintf("/api/channels/%s", channelData.Id()),
+	)
+	testAccRequireAPINestedStringField(
+		t,
+		channelAPI,
+		"config",
+		"bot_token",
+		incidentRelaySecretPlaceholder,
+	)
+	testAccRequireAPINestedStringField(
+		t,
+		channelAPI,
+		"config",
+		"app_token",
+		incidentRelaySecretPlaceholder,
+	)
+
+	testAccUpdateResource(t, ctx, channelResource, channelData, config, map[string]interface{}{
+		"name": "IR 1.2 Slack updated " + suffix,
+	}, map[string]interface{}{
+		"name":        "IR 1.2 Slack updated " + suffix,
+		"config_json": normalizeJSONStringState(slackConfig),
+	})
+
+	routeData := testAccCreateResource(t, ctx, resourceRoute(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "IR 1.2 Datadog " + suffix,
+		"source":                    "datadog",
+		"channel_ids":               testAccIntSet(testAccIDAsInt(t, channelData.Id())),
+		"notification_channel_mode": "route_only",
+		"matchers_json":             `{}`,
+		"integration_config_json":   `{}`,
+		"enabled":                   true,
+	})
+	routeAPI := testAccReadAPIObject(
+		t,
+		ctx,
+		config,
+		fmt.Sprintf("/api/routes/%s", routeData.Id()),
+	)
+	testAccRequireAPIStringField(t, routeAPI, "source", "datadog")
 }
 
 func TestAccIncidentRelayCoreResources(t *testing.T) {

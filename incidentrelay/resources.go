@@ -2,6 +2,8 @@ package incidentrelay
 
 import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 
+const incidentRelaySecretPlaceholder = "__INCIDENTRELAY_SECRET__"
+
 func resourceGroup() *schema.Resource {
 	fields := []fieldDef{
 		reqString("slug", "Stable group slug."),
@@ -121,8 +123,8 @@ func resourceChannel() *schema.Resource {
 	fields := []fieldDef{
 		reqInt("team_id", "Owner team id."),
 		reqString("name", "Channel name."),
-		reqString("channel_type", "Channel type, for example email, slack, mattermost, telegram, discord, msteams, webhook."),
-		reqJSON("config_json", "config", "Channel-specific JSON configuration."),
+		reqString("channel_type", "Channel type: email, slack, mattermost, telegram, discord, teams, or webhook."),
+		reqSensitiveJSON("config_json", "config", "Sensitive channel-specific JSON configuration."),
 		optBoolDefault("enabled", true, "Whether the channel is enabled."),
 	}
 	return crudResource(resourceSpec{
@@ -134,14 +136,42 @@ func resourceChannel() *schema.Resource {
 		DeletePath:   idPath("/api/channels/%s"),
 		CreateFields: []string{"team_id", "name", "channel_type", "config_json", "enabled"},
 		UpdateFields: []string{"team_id", "name", "channel_type", "config_json", "enabled"},
+		ResponseHook: channelResponseHook,
 	})
+}
+
+func channelResponseHook(d *schema.ResourceData, response map[string]interface{}) error {
+	channelType, _ := response["channel_type"].(string)
+	if channelType == "" {
+		channelType, _ = d.Get("channel_type").(string)
+	}
+	if channelType != "slack" {
+		return nil
+	}
+
+	remoteConfig, ok := response["config"]
+	if !ok {
+		return nil
+	}
+
+	currentConfig, _ := d.Get("config_json").(string)
+	restored, err := restoreMaskedJSONValues(
+		currentConfig,
+		remoteConfig,
+		incidentRelaySecretPlaceholder,
+	)
+	if err != nil {
+		return err
+	}
+	response["config"] = restored
+	return nil
 }
 
 func resourceRoute() *schema.Resource {
 	fields := []fieldDef{
 		reqInt("team_id", "Owner team id."),
 		reqString("name", "Route name."),
-		reqString("source", "Incoming alert source: alertmanager, grafana, rmon, zabbix, webhook, sentry, librenms, aws_sns, or heartbeat."),
+		reqString("source", "Incoming alert source: alertmanager, aws_sns, datadog, grafana, zabbix, webhook, sentry, librenms, rmon, or heartbeat."),
 		optInt("rotation_id", "Rotation id used by this route."),
 		optInt("service_id", "Default service id for this route."),
 		optInt("escalation_policy_id", "Escalation policy id used by this route."),

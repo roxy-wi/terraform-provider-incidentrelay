@@ -15,6 +15,9 @@ The provider communicates with the IncidentRelay HTTP API. Use token
 authentication for automation and username/password authentication for local
 development or bootstrap workflows.
 
+The current provider code is tested against IncidentRelay 1.2, including
+Datadog routes and Slack Bot API channels using HTTP actions or Socket Mode.
+
 ## Example Usage
 
 ```hcl
@@ -22,7 +25,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.1"
+      version = "~> 0.3"
     }
   }
 }

@@ -28,6 +28,7 @@ type resourceSpec struct {
 	UpdateFields  []string
 	ReadFields    []string
 	PayloadHook   func(*schema.ResourceData, map[string]interface{})
+	ResponseHook  func(*schema.ResourceData, map[string]interface{}) error
 }
 
 func crudResource(spec resourceSpec) *schema.Resource {
@@ -80,6 +81,11 @@ func crudCreate(ctx context.Context, d *schema.ResourceData, m interface{}, spec
 	if err := setIDFromResponse(d, response); err != nil {
 		return diag.FromErr(err)
 	}
+	if spec.ResponseHook != nil {
+		if err := spec.ResponseHook(d, response); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 	if err := setFieldsFromResponse(d, spec.Fields, spec.readFields(), response); err != nil {
 		return diag.FromErr(err)
 	}
@@ -109,6 +115,11 @@ func crudRead(ctx context.Context, d *schema.ResourceData, m interface{}, spec r
 		return diag.FromErr(err)
 	}
 
+	if spec.ResponseHook != nil {
+		if err := spec.ResponseHook(d, response); err != nil {
+			return diag.FromErr(err)
+		}
+	}
 	if err := setFieldsFromResponse(d, spec.Fields, spec.readFields(), response); err != nil {
 		return diag.FromErr(err)
 	}
@@ -131,6 +142,11 @@ func crudUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, spec
 		return diag.FromErr(err)
 	}
 	if len(response) > 0 {
+		if spec.ResponseHook != nil {
+			if err := spec.ResponseHook(d, response); err != nil {
+				return diag.FromErr(err)
+			}
+		}
 		if err := setFieldsFromResponse(d, spec.Fields, spec.readFields(), response); err != nil {
 			return diag.FromErr(err)
 		}

@@ -123,6 +123,130 @@ func TestGroupResourceCRUD(t *testing.T) {
 	}
 }
 
+func TestChannelResourcePreservesIncidentRelay12MaskedSecrets(t *testing.T) {
+	configJSON := `{
+		"mode": "bot_api",
+		"connection_mode": "socket_mode",
+		"bot_token": "xoxb-terraform-test",
+		"app_token": "xapp-terraform-test",
+		"channel_id": "C0123456789"
+	}`
+	state := map[string]interface{}{
+		"id":           202,
+		"team_id":      42,
+		"name":         "Slack Socket Mode",
+		"channel_type": "slack",
+		"config": map[string]interface{}{
+			"mode":            "bot_api",
+			"connection_mode": "socket_mode",
+			"bot_token":       "xoxb-terraform-test",
+			"app_token":       "xapp-terraform-test",
+			"channel_id":      "C0123456789",
+		},
+		"enabled": true,
+	}
+
+	maskedResponse := func() map[string]interface{} {
+		return map[string]interface{}{
+			"id":           state["id"],
+			"team_id":      state["team_id"],
+			"name":         state["name"],
+			"channel_type": state["channel_type"],
+			"config": map[string]interface{}{
+				"mode":            "bot_api",
+				"connection_mode": "socket_mode",
+				"bot_token":       incidentRelaySecretPlaceholder,
+				"app_token":       incidentRelaySecretPlaceholder,
+				"channel_id":      "C0123456789",
+			},
+			"enabled": state["enabled"],
+		}
+	}
+
+	assertPlaintextSecrets := func(payload map[string]interface{}) {
+		t.Helper()
+		config, ok := payload["config"].(map[string]interface{})
+		if !ok {
+			t.Fatalf("payload config = %T, want object", payload["config"])
+		}
+		if got, want := config["bot_token"], "xoxb-terraform-test"; got != want {
+			t.Fatalf("payload bot_token = %v, want %v", got, want)
+		}
+		if got, want := config["app_token"], "xapp-terraform-test"; got != want {
+			t.Fatalf("payload app_token = %v, want %v", got, want)
+		}
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/channels":
+			var payload map[string]interface{}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode create payload: %v", err)
+			}
+			assertPlaintextSecrets(payload)
+			writeJSON(t, w, maskedResponse())
+
+		case r.Method == http.MethodGet && r.URL.Path == "/api/channels/202":
+			writeJSON(t, w, maskedResponse())
+
+		case r.Method == http.MethodPut && r.URL.Path == "/api/channels/202":
+			var payload map[string]interface{}
+			if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+				t.Fatalf("decode update payload: %v", err)
+			}
+			assertPlaintextSecrets(payload)
+			state["name"] = payload["name"]
+			writeJSON(t, w, maskedResponse())
+
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/channels/202":
+			w.WriteHeader(http.StatusNoContent)
+
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := NewClient(ClientConfig{BaseURL: server.URL, Token: "token"})
+	if err != nil {
+		t.Fatalf("NewClient returned error: %v", err)
+	}
+	config := &Config{Client: client}
+	resource := resourceChannel()
+	if !resource.Schema["config_json"].Sensitive {
+		t.Fatal("channel config_json is not marked sensitive")
+	}
+	data := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
+		"team_id":      42,
+		"name":         "Slack Socket Mode",
+		"channel_type": "slack",
+		"config_json":  configJSON,
+		"enabled":      true,
+	})
+
+	if diags := resource.CreateWithoutTimeout(context.Background(), data, config); diags.HasError() {
+		t.Fatalf("create diagnostics: %v", diags)
+	}
+	if got, want := data.Get("config_json"), normalizeJSONStringState(configJSON); got != want {
+		t.Fatalf("config_json after create = %v, want %v", got, want)
+	}
+
+	if err := data.Set("name", "Slack Socket Mode Updated"); err != nil {
+		t.Fatalf("set name: %v", err)
+	}
+	if diags := resource.UpdateWithoutTimeout(context.Background(), data, config); diags.HasError() {
+		t.Fatalf("update diagnostics: %v", diags)
+	}
+	if got, want := data.Get("config_json"), normalizeJSONStringState(configJSON); got != want {
+		t.Fatalf("config_json after update = %v, want %v", got, want)
+	}
+
+	if diags := resource.DeleteWithoutTimeout(context.Background(), data, config); diags.HasError() {
+		t.Fatalf("delete diagnostics: %v", diags)
+	}
+}
+
 func TestReadListDatasourceFindsSingleMatch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got, want := r.Method, http.MethodGet; got != want {

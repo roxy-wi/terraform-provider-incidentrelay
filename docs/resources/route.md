@@ -32,6 +32,23 @@ escalation mode automatically.
 The API returns `intake_token` only on create or regeneration. It is marked
 sensitive in Terraform state.
 
+IncidentRelay 1.2 adds Datadog as an incoming source:
+
+```hcl
+resource "incidentrelay_route" "datadog" {
+  team_id     = incidentrelay_team.platform.id
+  name        = "platform-datadog"
+  source      = "datadog"
+  channel_ids = [incidentrelay_channel.slack_socket.id]
+
+  matchers_json           = jsonencode({})
+  integration_config_json = jsonencode({})
+}
+```
+
+Send Datadog webhooks to the route-specific IncidentRelay Datadog intake
+endpoint using the one-time intake token returned when the route is created.
+
 ## Import
 
 ```sh

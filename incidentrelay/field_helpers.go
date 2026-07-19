@@ -60,6 +60,12 @@ func reqJSON(name, apiName, description string) fieldDef {
 	return fieldDef{Name: name, APIName: apiName, Kind: kindJSON, Required: true, Description: description}
 }
 
+func reqSensitiveJSON(name, apiName, description string) fieldDef {
+	field := reqJSON(name, apiName, description)
+	field.Sensitive = true
+	return field
+}
+
 func computedJSON(name, apiName, description string) fieldDef {
 	return fieldDef{Name: name, APIName: apiName, Kind: kindJSON, Computed: true, Description: description}
 }

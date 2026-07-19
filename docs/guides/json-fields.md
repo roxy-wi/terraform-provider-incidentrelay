@@ -29,12 +29,23 @@ resource "incidentrelay_channel" "webhook" {
   channel_type = "webhook"
 
   config_json = jsonencode({
-    url                  = var.webhook_url
-    method               = "POST"
+    webhook_url          = var.webhook_url
     notify_on_severities = ["critical", "high"]
   })
 }
 ```
+
+Channel configuration is marked sensitive because it can contain tokens and
+signing secrets. Sensitive values remain in Terraform state even though CLI
+output is redacted, so keep state in an encrypted backend with restricted
+access.
+
+IncidentRelay 1.2 replaces Slack secrets with
+`__INCIDENTRELAY_SECRET__` in API responses. The provider restores those
+placeholders from the existing Terraform state during refresh. This prevents
+false drift while keeping the API response secret-free. Imports cannot recover
+the original values; configure the real Slack secrets before updating an
+imported channel.
 
 ## Route Matchers
 

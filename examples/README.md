@@ -13,6 +13,8 @@ configuration and adapt.
   business services, and business service components.
 - `maintenance`: silences and maintenance windows.
 - `heartbeat`: heartbeat dead-man-switch configuration.
+- `incidentrelay-1.2`: Datadog routing and Slack Socket Mode with masked-secret
+  refresh compatibility.
 - `data-sources`: looking up existing groups, teams, users, services, and
   service version information.
 - `imports`: Terraform 1.5+ import blocks and classic `terraform import`

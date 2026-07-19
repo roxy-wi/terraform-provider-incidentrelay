@@ -75,6 +75,7 @@ Outbound notification channel.
 - Required: `team_id`, `name`, `channel_type`, `config_json`.
 - Optional: `enabled`.
 - JSON: `config_json`.
+- Sensitive: `config_json`.
 - Import: numeric channel ID.
 
 ### `incidentrelay_route`

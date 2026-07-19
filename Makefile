@@ -1,5 +1,5 @@
 BINARY_NAME ?= terraform-provider-incidentrelay
-VERSION ?= 0.1.0
+VERSION ?= 0.3.0
 HOSTNAME ?= registry.terraform.io
 NAMESPACE ?= roxy-wi
 TYPE ?= incidentrelay

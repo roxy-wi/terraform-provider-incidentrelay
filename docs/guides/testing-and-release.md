@@ -37,10 +37,10 @@ locally built provider binary through Terraform's development override
 mechanism. That test covers `terraform validate`, `import`, `apply`,
 idempotent `plan -detailed-exitcode`, and `destroy`.
 
-The workflow first tries to pull `ghcr.io/roxy-wi/incidentrelay:latest`
-anonymously, which is the expected path for the public package. If that fails,
+The workflow first tries to pull `ghcr.io/roxy-wi/incidentrelay:1.2`
+anonymously, which pins provider compatibility tests to IncidentRelay 1.2. If that fails,
 it logs in to GHCR with `GITHUB_TOKEN` and `packages: read`, retries the pull,
-and then falls back to cloning `roxy-wi/IncidentRelay` at `main` and building the
+and then falls back to cloning `roxy-wi/IncidentRelay` at `v1.2` and building the
 same image locally on the runner.
 
 Acceptance tests are intentionally separate from the fast CI workflow because
@@ -56,7 +56,7 @@ export INCIDENTRELAY_PASSWORD="change-me-123"
 make test-acc
 ```
 
-The release workflow runs on semver tags such as `v0.1.2`. It builds
+The release workflow runs on semver tags such as `v0.3.0`. It builds
 Registry-compatible zip assets, attaches the Terraform Registry manifest,
 generates SHA256 checksums, and signs the checksum file with GPG.
 
@@ -64,7 +64,7 @@ generates SHA256 checksums, and signs the checksum file with GPG.
 
 1. Ensure CI is green on `main`.
 2. Update documentation and examples for new resources or fields.
-3. Create the next semver tag, for example `v0.1.2`.
+3. Create the next semver tag, for example `v0.3.0`.
 4. Push the tag.
 5. Verify GitHub Release assets:
    - platform zip files
