@@ -56,7 +56,7 @@ export INCIDENTRELAY_PASSWORD="change-me-123"
 make test-acc
 ```
 
-The release workflow runs on semver tags such as `v0.3.0`. It builds
+The release workflow runs on semver tags such as `v0.4.0`. It builds
 Registry-compatible zip assets, attaches the Terraform Registry manifest,
 generates SHA256 checksums, and signs the checksum file with GPG.
 
@@ -64,7 +64,7 @@ generates SHA256 checksums, and signs the checksum file with GPG.
 
 1. Ensure CI is green on `main`.
 2. Update documentation and examples for new resources or fields.
-3. Create the next semver tag, for example `v0.3.0`.
+3. Create the next semver tag, for example `v0.4.0`.
 4. Push the tag.
 5. Verify GitHub Release assets:
    - platform zip files

@@ -62,6 +62,8 @@ func Provider() *schema.Provider {
 			"incidentrelay_group":                      resourceGroup(),
 			"incidentrelay_admin_user":                 resourceAdminUser(),
 			"incidentrelay_group_membership":           resourceGroupMembership(),
+			"incidentrelay_sso_provider":               resourceSSOProvider(),
+			"incidentrelay_sso_group_mapping":          resourceSSOGroupMapping(),
 			"incidentrelay_team":                       resourceTeam(),
 			"incidentrelay_team_membership":            resourceTeamMembership(),
 			"incidentrelay_channel":                    resourceChannel(),

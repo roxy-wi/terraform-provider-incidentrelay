@@ -1,6 +1,6 @@
 ---
 page_title: "incidentrelay_rotation_override Resource - IncidentRelay"
-subcategory: "On-Call"
+subcategory: "On-call"
 description: |-
   Manages a temporary override for an IncidentRelay rotation.
 ---

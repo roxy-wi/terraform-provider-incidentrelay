@@ -130,6 +130,83 @@ func TestAccIncidentRelay12Compatibility(t *testing.T) {
 	testAccRequireAPIStringField(t, routeAPI, "source", "datadog")
 }
 
+func TestAccIncidentRelaySSOResources(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tfsso-g-" + suffix,
+		"name":        "SSO group " + suffix,
+		"description": "Terraform SSO acceptance test.",
+		"active":      true,
+	})
+
+	providerResource := resourceSSOProvider()
+	providerData := testAccCreateResource(t, ctx, providerResource, config, map[string]interface{}{
+		"slug":                   "tfsso-" + suffix,
+		"label":                  "Terraform SSO " + suffix,
+		"protocol":               "oidc",
+		"enabled":                true,
+		"client_id":              "terraform-acceptance",
+		"client_secret":          "terraform-acceptance-secret",
+		"oidc_metadata_url":      "https://idp.example.com/.well-known/openid-configuration",
+		"allowed_domains":        testAccStringSet("example.com"),
+		"auto_create_users":      true,
+		"require_verified_email": false,
+	})
+	providerID := testAccIDAsInt(t, providerData.Id())
+
+	if got, want := providerData.Get("has_client_secret"), true; got != want {
+		t.Fatalf("has_client_secret = %v, want %v", got, want)
+	}
+	if got, want := providerData.Get("client_secret"), "terraform-acceptance-secret"; got != want {
+		t.Fatalf("client_secret after refresh = %v, want preserved secret", got)
+	}
+
+	testAccImportReadResource(t, ctx, resourceSSOProvider(), config, providerData, nil, map[string]interface{}{
+		"slug":              "tfsso-" + suffix,
+		"label":             "Terraform SSO " + suffix,
+		"protocol":          "oidc",
+		"has_client_secret": true,
+	})
+
+	testAccUpdateResource(t, ctx, providerResource, providerData, config, map[string]interface{}{
+		"label": "Terraform SSO updated " + suffix,
+	}, map[string]interface{}{
+		"label":         "Terraform SSO updated " + suffix,
+		"client_secret": "terraform-acceptance-secret",
+	})
+
+	mappingResource := resourceSSOGroupMapping()
+	mappingData := testAccCreateResource(t, ctx, mappingResource, config, map[string]interface{}{
+		"provider_id":    providerID,
+		"external_group": "terraform-platform-" + suffix,
+		"group_id":       testAccIDAsInt(t, groupData.Id()),
+		"group_role":     "editor",
+		"active":         true,
+		"priority":       100,
+	})
+
+	testAccImportReadResource(t, ctx, resourceSSOGroupMapping(), config, mappingData, map[string]interface{}{
+		"provider_id": providerID,
+	}, map[string]interface{}{
+		"external_group": "terraform-platform-" + suffix,
+		"group_role":     "editor",
+		"active":         true,
+		"priority":       100,
+	})
+
+	testAccUpdateResource(t, ctx, mappingResource, mappingData, config, map[string]interface{}{
+		"group_role": "user_admin",
+		"priority":   50,
+	}, map[string]interface{}{
+		"group_role": "user_admin",
+		"active":     true,
+		"priority":   50,
+	})
+}
+
 func TestAccIncidentRelayCoreResources(t *testing.T) {
 	config := testAccProviderConfig(t)
 	ctx := context.Background()

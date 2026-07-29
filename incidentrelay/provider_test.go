@@ -21,6 +21,8 @@ func TestProviderInternalValidate(t *testing.T) {
 	for _, name := range []string{
 		"incidentrelay_group",
 		"incidentrelay_admin_user",
+		"incidentrelay_sso_provider",
+		"incidentrelay_sso_group_mapping",
 		"incidentrelay_team",
 		"incidentrelay_channel",
 		"incidentrelay_route",

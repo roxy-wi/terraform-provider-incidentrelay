@@ -38,8 +38,8 @@ terraform import incidentrelay_group.infra 1
 For child resources that are read through a parent list endpoint, keep the
 parent ID in configuration before importing. Examples include memberships,
 rotation layers, rotation layer members, rotation overrides, escalation policy
-rules, notification policy rules, business service components, and service
-child resources.
+rules, notification policy rules, SSO group mappings, business service
+components, and service child resources.
 
 ## Import IDs
 
@@ -48,6 +48,8 @@ child resources.
 | `incidentrelay_group` | Group ID | Reads from `/api/groups`. |
 | `incidentrelay_admin_user` | User ID | Password is not read back from the API. |
 | `incidentrelay_group_membership` | Membership ID | Configure `group_id` before import. |
+| `incidentrelay_sso_provider` | SSO provider ID | Secrets are not read back from the API. |
+| `incidentrelay_sso_group_mapping` | Mapping ID | Configure `provider_id` before import. |
 | `incidentrelay_team` | Team ID | Direct read. |
 | `incidentrelay_team_membership` | Membership ID | Configure `team_id` before import. |
 | `incidentrelay_channel` | Channel ID | Direct read. |

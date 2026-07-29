@@ -47,6 +47,33 @@ Membership of an existing user in a group.
 - Computed: `username`, `display_name`.
 - Import: numeric membership ID. Keep `group_id` in configuration before import.
 
+## Single Sign-On
+
+### `incidentrelay_sso_provider`
+
+OIDC or SAML identity provider used for IncidentRelay login.
+
+- Required: `slug`, `label`.
+- Optional: `protocol`, `enabled`, claim names, `allowed_domains`, user
+  provisioning and group synchronization settings, OIDC endpoints and
+  credentials, SAML IdP/SP settings, `saml_name_id_format`,
+  `extra_config_json`.
+- Computed: `has_client_secret`, `has_saml_sp_private_key`.
+- JSON: `extra_config_json`.
+- Sensitive: `client_secret`, `saml_sp_private_key`.
+- Import: numeric SSO provider ID. Secrets are not returned by the API.
+
+### `incidentrelay_sso_group_mapping`
+
+Maps an external identity-provider group to an IncidentRelay group and optional
+team.
+
+- Required: `provider_id`, `external_group`, `group_id`.
+- Optional: `group_role`, `team_id`, `team_role`, `active`, `priority`.
+- Computed: `group_slug`, `group_name`, `team_slug`, `team_name`.
+- Import: numeric mapping ID. Keep `provider_id` in configuration before
+  import.
+
 ## Teams And Notification Intake
 
 ### `incidentrelay_team`

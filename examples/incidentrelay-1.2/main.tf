@@ -2,7 +2,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.3"
+      version = "~> 0.4"
     }
   }
 }

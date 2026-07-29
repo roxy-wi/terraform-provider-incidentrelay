@@ -7,6 +7,8 @@ CLI imports are supported too.
 terraform import incidentrelay_group.infra 1
 terraform import incidentrelay_admin_user.alice 2
 terraform import incidentrelay_group_membership.alice 3
+terraform import incidentrelay_sso_provider.corporate 4
+terraform import incidentrelay_sso_group_mapping.platform 5
 terraform import incidentrelay_team.platform 10
 terraform import incidentrelay_team_membership.alice 11
 terraform import incidentrelay_channel.email 20

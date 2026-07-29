@@ -60,6 +60,13 @@ provider "incidentrelay" {
 The provider exchanges the credentials for an access token during provider
 configuration. The password is marked sensitive in Terraform.
 
+## SSO Configuration And Provider Authentication
+
+`incidentrelay_sso_provider` configures how users sign in to IncidentRelay.
+It does not authenticate Terraform itself. The Terraform provider still needs
+an API token or a local IncidentRelay username and password with global
+administrator access to manage SSO providers and group mappings.
+
 ## Local Development With Self-Signed TLS
 
 ```hcl

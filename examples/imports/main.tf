@@ -2,7 +2,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.3"
+      version = "~> 0.4"
     }
   }
 }
@@ -32,6 +32,11 @@ import {
 import {
   to = incidentrelay_admin_user.alice
   id = "2"
+}
+
+import {
+  to = incidentrelay_sso_provider.corporate
+  id = "3"
 }
 
 import {
@@ -125,6 +130,11 @@ import {
 import {
   to = incidentrelay_group_membership.alice
   id = "1001"
+}
+
+import {
+  to = incidentrelay_sso_group_mapping.platform
+  id = "1007"
 }
 
 import {
