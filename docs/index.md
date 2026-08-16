@@ -9,8 +9,8 @@ description: |-
 Use the IncidentRelay provider to manage IncidentRelay configuration as code:
 groups, users, teams, notification channels, alert routes, rotations, escalation
 policies, notification policies, service catalog objects, maintenance windows,
-silences, heartbeats, business services, OIDC/SAML providers, and SSO group
-mappings.
+incident priority policies, silences, heartbeats, business services, OIDC/SAML
+providers, and SSO group mappings.
 
 The provider communicates with the IncidentRelay HTTP API. Use token
 authentication for automation and username/password authentication for local
@@ -104,9 +104,9 @@ metadata, maintenance scopes, and integration config examples.
 
 ## Importing Existing Configuration
 
-All resources support Terraform import with the IncidentRelay numeric API ID.
-Some child resources also need their parent ID in configuration so the provider
-can read them from parent list endpoints after import.
+Resources support Terraform import using their IncidentRelay API identity.
+Most use a numeric ID; nested resources may also require their parent ID in
+configuration or use a documented `parent_id/resource_id` import identity.
 
 See [Import guide](guides/importing.md) and [import examples](../examples/imports/main.tf).
 

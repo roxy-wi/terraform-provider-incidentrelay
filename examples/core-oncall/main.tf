@@ -134,6 +134,31 @@ resource "incidentrelay_escalation_policy_rule" "primary_rotation" {
   target_id     = incidentrelay_rotation.primary.id
 }
 
+data "incidentrelay_incident_priority" "p1" {
+  slug = "p1"
+}
+
+resource "incidentrelay_priority_policy" "production" {
+  team_id              = incidentrelay_team.platform.id
+  name                 = "Production priority"
+  description          = "Automatic incident priority for production alerts."
+  enabled              = true
+  default_for_team     = true
+  update_mode          = "raise_only"
+  source_priority_mode = "ignore"
+  fallback_mode        = "severity_mapping"
+}
+
+resource "incidentrelay_priority_policy_rule" "critical" {
+  policy_id   = incidentrelay_priority_policy.production.id
+  name        = "Critical alerts"
+  priority_id = data.incidentrelay_incident_priority.p1.id
+
+  matchers_json = jsonencode({
+    severity = "critical"
+  })
+}
+
 resource "incidentrelay_notification_policy" "production" {
   team_id = incidentrelay_team.platform.id
   name    = "Production notifications"

@@ -64,6 +64,23 @@ resource "incidentrelay_route" "alertmanager" {
 }
 ```
 
+## Priority Policy Matchers
+
+```hcl
+resource "incidentrelay_priority_policy_rule" "critical_production" {
+  policy_id   = incidentrelay_priority_policy.production.id
+  name        = "Critical production"
+  priority_id = data.incidentrelay_incident_priority.p1.id
+
+  matchers_json = jsonencode({
+    severity = "critical"
+    fields = {
+      "service.environment" = "production"
+    }
+  })
+}
+```
+
 ## Integration Configuration
 
 ```hcl

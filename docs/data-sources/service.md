@@ -38,3 +38,12 @@ more filters.
 - `team_name` (String) Owner team name.
 - `team_slug` (String) Owner team slug.
 - `group_id` (Number) Owner group ID.
+- `default_rotation_id` (Number) Default rotation ID.
+- `default_rotation_name` (String) Default rotation name.
+- `default_escalation_policy_id` (Number) Default escalation policy ID.
+- `default_escalation_policy_name` (String) Default escalation policy name.
+- `notification_policy_id` (Number) Assigned notification policy ID.
+- `notification_policy_name` (String) Assigned notification policy name.
+- `priority_policy_id` (Number) Assigned incident priority policy ID, or `0`
+  when the service uses the team's default policy.
+- `priority_policy_name` (String) Assigned incident priority policy name.

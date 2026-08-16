@@ -21,6 +21,8 @@ terraform import incidentrelay_escalation_policy.critical 50
 terraform import incidentrelay_escalation_policy_rule.primary 51
 terraform import incidentrelay_notification_policy.production 60
 terraform import incidentrelay_notification_policy_rule.critical_email 61
+terraform import incidentrelay_priority_policy.production 62
+terraform import incidentrelay_priority_policy_rule.critical_production 62/63
 terraform import incidentrelay_service.api 70
 terraform import incidentrelay_service_match_rule.api_labels 71
 terraform import incidentrelay_service_link.api_dashboard 72

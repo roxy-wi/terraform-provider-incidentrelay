@@ -3,7 +3,8 @@
 Terraform provider for managing IncidentRelay configuration as code: access
 groups, users, teams, notification channels, alert routes, on-call rotations,
 escalation and notification policies, service catalog objects, silences,
-maintenance windows, heartbeats, business services, and OIDC/SAML SSO.
+incident priority policies, maintenance windows, heartbeats, business services,
+and OIDC/SAML SSO.
 
 The provider talks to the IncidentRelay HTTP API and supports both personal/API
 Bearer tokens and username/password login.
@@ -21,7 +22,8 @@ The current provider code is tested against IncidentRelay 1.2. It supports the
 Socket Mode. IncidentRelay 1.2 masks Slack secrets in API responses; the
 provider preserves the configured values during refresh so that masking does
 not cause perpetual Terraform drift. It also manages the SSO provider and group
-mapping APIs available in IncidentRelay 1.2.
+mapping APIs, incident priority policies, and priority-policy service
+assignments available in IncidentRelay 1.2.
 
 ## Quick Start
 
@@ -107,6 +109,8 @@ IncidentRelay instance with a self-signed certificate.
 - `incidentrelay_rotation_override`
 - `incidentrelay_escalation_policy`
 - `incidentrelay_escalation_policy_rule`
+- `incidentrelay_priority_policy`
+- `incidentrelay_priority_policy_rule`
 - `incidentrelay_notification_policy`
 - `incidentrelay_notification_policy_rule`
 - `incidentrelay_service`
@@ -126,7 +130,13 @@ IncidentRelay instance with a self-signed certificate.
 - `incidentrelay_group`
 - `incidentrelay_team`
 - `incidentrelay_user`
+- `incidentrelay_channel`
 - `incidentrelay_service`
+- `incidentrelay_rotation`
+- `incidentrelay_incident_priority`
+- `incidentrelay_escalation_policy`
+- `incidentrelay_notification_policy`
+- `incidentrelay_service_match_rule`
 
 Nested API objects such as channel `config`, route `matchers`, service
 `labels`, maintenance `scopes`, and heartbeat `metadata` are represented as

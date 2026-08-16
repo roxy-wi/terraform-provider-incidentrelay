@@ -17,6 +17,8 @@ resource "incidentrelay_service" "api" {
   criticality  = "high"
   tier         = "tier_2"
 
+  priority_policy_id = incidentrelay_priority_policy.production.id
+
   labels_json = jsonencode({
     owner = "platform"
   })

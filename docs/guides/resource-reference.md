@@ -205,6 +205,26 @@ Rule inside a service notification policy.
 - JSON: `matchers_json`.
 - Import: numeric rule ID. Keep `policy_id` in configuration before import.
 
+### `incidentrelay_priority_policy`
+
+Incident priority policy owned by a team.
+
+- Required: `team_id`, `name`.
+- Optional: `description`, `enabled`, `default_for_team`, `update_mode`,
+  `source_priority_mode`, `fallback_mode`, `fallback_priority_id`.
+- Computed: `team_name`, `team_slug`, `rules_count`, `services_count`.
+- Import: numeric policy ID. Changing `team_id` recreates the policy.
+
+### `incidentrelay_priority_policy_rule`
+
+Rule inside an incident priority policy.
+
+- Required: `policy_id`, `name`, `priority_id`.
+- Optional: `description`, `position`, `matchers_json`,
+  `matcher_preset_id`, `enabled`.
+- JSON: `matchers_json`.
+- Import: `policy_id/rule_id`.
+
 ## Service Catalog
 
 ### `incidentrelay_service`
@@ -215,10 +235,12 @@ Technical service in the service catalog.
 - Optional: `description`, `service_type`, `environment`, `criticality`,
   `tier`, `status`, `status_source`, `status_message`,
   `default_rotation_id`, `default_escalation_policy_id`,
-  `notification_policy_id`, `labels_json`, `tags`, `metadata_json`, `enabled`,
-  `public`, `public_name`, `public_description`, `public_order`.
+  `notification_policy_id`, `priority_policy_id`, `labels_json`, `tags`,
+  `metadata_json`, `enabled`, `public`, `public_name`, `public_description`,
+  `public_order`.
 - Computed: `group_id`, `team_name`, `team_slug`, `default_rotation_name`,
-  `notification_policy_name`, `default_escalation_policy_name`.
+  `notification_policy_name`, `priority_policy_name`,
+  `default_escalation_policy_name`.
 - JSON: `labels_json`, `metadata_json`.
 - Import: numeric service ID.
 
@@ -226,8 +248,10 @@ Technical service in the service catalog.
 
 Rule mapping incoming alerts to a service.
 
-- Required: `team_id`, `service_id`, `name`, `matchers_json`.
-- Optional: `route_id`, `position`, `description`, `enabled`.
+- Required: `team_id`, `service_id`, `name`.
+- Optional: `route_id`, `position`, `description`, `matcher_preset_id`,
+  `matchers_json`, `enabled`. At least one of `matcher_preset_id` or a non-empty
+  `matchers_json` object is required by the API.
 - Computed: `route_name`, `service_name`.
 - JSON: `matchers_json`.
 - Import: numeric rule ID. Keep `service_id` in configuration before import.

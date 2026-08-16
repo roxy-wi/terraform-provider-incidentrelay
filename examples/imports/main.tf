@@ -80,6 +80,16 @@ import {
 }
 
 import {
+  to = incidentrelay_priority_policy.production
+  id = "62"
+}
+
+import {
+  to = incidentrelay_priority_policy_rule.critical_production
+  id = "62/63"
+}
+
+import {
   to = incidentrelay_service.api
   id = "70"
 }

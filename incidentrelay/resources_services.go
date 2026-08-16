@@ -1,6 +1,12 @@
 package incidentrelay
 
-import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+)
 
 func resourceService() *schema.Resource {
 	fields := []fieldDef{
@@ -18,6 +24,7 @@ func resourceService() *schema.Resource {
 		optInt("default_rotation_id", "Default rotation id."),
 		optInt("default_escalation_policy_id", "Default escalation policy id."),
 		optInt("notification_policy_id", "Notification policy id."),
+		optInt("priority_policy_id", "Incident priority policy id."),
 		optJSONDefault("labels_json", "labels", "{}", "Service labels JSON."),
 		optStringSet("tags", "Service tags."),
 		optJSONDefault("metadata_json", "metadata", "{}", "Service metadata JSON."),
@@ -31,6 +38,7 @@ func resourceService() *schema.Resource {
 		computedString("team_slug", "Team slug."),
 		computedString("default_rotation_name", "Default rotation name."),
 		computedString("notification_policy_name", "Notification policy name."),
+		computedString("priority_policy_name", "Incident priority policy name."),
 		computedString("default_escalation_policy_name", "Default escalation policy name."),
 	}
 	return crudResource(resourceSpec{
@@ -40,8 +48,8 @@ func resourceService() *schema.Resource {
 		ReadPath:     idPath("/api/services/%s"),
 		UpdatePath:   idPath("/api/services/%s"),
 		DeletePath:   idPath("/api/services/%s"),
-		CreateFields: []string{"team_id", "slug", "name", "description", "service_type", "environment", "criticality", "tier", "status", "status_source", "status_message", "default_rotation_id", "default_escalation_policy_id", "notification_policy_id", "labels_json", "tags", "metadata_json", "enabled", "public", "public_name", "public_description", "public_order"},
-		UpdateFields: []string{"team_id", "slug", "name", "description", "service_type", "environment", "criticality", "tier", "status", "status_source", "status_message", "default_rotation_id", "default_escalation_policy_id", "notification_policy_id", "labels_json", "tags", "metadata_json", "enabled", "public", "public_name", "public_description", "public_order"},
+		CreateFields: []string{"team_id", "slug", "name", "description", "service_type", "environment", "criticality", "tier", "status", "status_source", "status_message", "default_rotation_id", "default_escalation_policy_id", "notification_policy_id", "priority_policy_id", "labels_json", "tags", "metadata_json", "enabled", "public", "public_name", "public_description", "public_order"},
+		UpdateFields: []string{"team_id", "slug", "name", "description", "service_type", "environment", "criticality", "tier", "status", "status_source", "status_message", "default_rotation_id", "default_escalation_policy_id", "notification_policy_id", "priority_policy_id", "labels_json", "tags", "metadata_json", "enabled", "public", "public_name", "public_description", "public_order"},
 	})
 }
 
@@ -53,21 +61,42 @@ func resourceServiceMatchRule() *schema.Resource {
 		optIntDefault("position", 0, "Lower position is evaluated first."),
 		reqString("name", "Rule name."),
 		optString("description", "Optional rule description."),
-		reqJSON("matchers_json", "matchers", "Matcher JSON evaluated against alerts."),
+		optInt("matcher_preset_id", "Optional matcher preset id."),
+		{Name: "matchers_json", APIName: "matchers", Kind: kindJSON, Optional: true, Description: "Matcher JSON evaluated against alerts."},
 		optBoolDefault("enabled", true, "Whether the rule is enabled."),
 		computedString("route_name", "Route name."),
 		computedString("service_name", "Service name."),
 	}
-	return crudResource(resourceSpec{
+	resource := crudResource(resourceSpec{
 		Description:  "IncidentRelay service match rule.",
 		Fields:       fields,
 		CreatePath:   fieldCreatePath("/api/services/%d/match-rules", "service_id"),
 		ReadListPath: fieldListPath("/api/services/%d/match-rules", "service_id"),
 		UpdatePath:   idPath("/api/services/match-rules/%s"),
 		DeletePath:   idPath("/api/services/match-rules/%s"),
-		CreateFields: []string{"team_id", "service_id", "route_id", "position", "name", "description", "matchers_json", "enabled"},
-		UpdateFields: []string{"team_id", "service_id", "route_id", "position", "name", "description", "matchers_json", "enabled"},
+		CreateFields: []string{"team_id", "service_id", "route_id", "position", "name", "description", "matcher_preset_id", "matchers_json", "enabled"},
+		UpdateFields: []string{"team_id", "service_id", "route_id", "position", "name", "description", "matcher_preset_id", "matchers_json", "enabled"},
 	})
+	resource.Schema["matcher_preset_id"].ValidateFunc = validation.IntAtLeast(1)
+	resource.CustomizeDiff = func(_ context.Context, diff *schema.ResourceDiff, _ interface{}) error {
+		if !diff.NewValueKnown("matcher_preset_id") || !diff.NewValueKnown("matchers_json") {
+			return nil
+		}
+		if _, ok := diff.GetOk("matcher_preset_id"); ok {
+			return nil
+		}
+
+		matchers, err := jsonStringToValue(diff.Get("matchers_json").(string))
+		if err != nil {
+			return fmt.Errorf("parse matchers_json: %w", err)
+		}
+		matcherObject, ok := matchers.(map[string]interface{})
+		if !ok || len(matcherObject) == 0 {
+			return fmt.Errorf("at least one of matcher_preset_id or a non-empty matchers_json object is required")
+		}
+		return nil
+	}
+	return resource
 }
 
 func resourceServiceLink() *schema.Resource {

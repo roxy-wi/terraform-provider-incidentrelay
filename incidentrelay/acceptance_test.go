@@ -207,6 +207,146 @@ func TestAccIncidentRelaySSOResources(t *testing.T) {
 	})
 }
 
+func TestAccIncidentRelayPriorityPolicyAndRotationDataSource(t *testing.T) {
+	config := testAccProviderConfig(t)
+	ctx := context.Background()
+	suffix := testAccSuffix()
+
+	groupData := testAccCreateResource(t, ctx, resourceGroup(), config, map[string]interface{}{
+		"slug":        "tfprio-g-" + suffix,
+		"name":        "Priority group " + suffix,
+		"description": "Terraform priority policy acceptance test.",
+		"active":      true,
+	})
+
+	teamData := testAccCreateResource(t, ctx, resourceTeam(), config, map[string]interface{}{
+		"group_id":                   testAccIDAsInt(t, groupData.Id()),
+		"slug":                       "tfprio-t-" + suffix,
+		"name":                       "Priority team " + suffix,
+		"description":                "Terraform priority policy acceptance test.",
+		"escalation_enabled":         true,
+		"escalation_after_reminders": 2,
+		"active":                     true,
+	})
+	teamID := testAccIDAsInt(t, teamData.Id())
+
+	rotationData := testAccCreateResource(t, ctx, resourceRotation(), config, map[string]interface{}{
+		"team_id":                   teamID,
+		"name":                      "Priority rotation " + suffix,
+		"description":               "Rotation data source acceptance test.",
+		"start_at":                  "2026-07-13T09:00:00",
+		"rotation_type":             "weekly",
+		"interval_value":            1,
+		"interval_unit":             "weeks",
+		"handoff_time":              "09:00",
+		"handoff_weekday":           0,
+		"timezone":                  "UTC",
+		"reminder_interval_seconds": 300,
+		"enabled":                   true,
+		"add_team_members":          false,
+	})
+
+	rotationLookup := datasourceRotation()
+	rotationLookupData := schema.TestResourceDataRaw(t, rotationLookup.Schema, map[string]interface{}{
+		"team_slug": teamData.Get("slug"),
+		"name":      rotationData.Get("name"),
+	})
+	testAccRequireNoDiags(t, rotationLookup.ReadContext(ctx, rotationLookupData, config))
+	if got, want := rotationLookupData.Id(), rotationData.Id(); got != want {
+		t.Fatalf("rotation lookup id = %q, want %q", got, want)
+	}
+	if got, want := rotationLookupData.Get("team_id"), teamID; got != want {
+		t.Fatalf("rotation lookup team_id = %v, want %v", got, want)
+	}
+
+	priorityLookup := datasourceIncidentPriority()
+	priorityLookupData := schema.TestResourceDataRaw(t, priorityLookup.Schema, map[string]interface{}{
+		"slug": "p1",
+	})
+	testAccRequireNoDiags(t, priorityLookup.ReadContext(ctx, priorityLookupData, config))
+	priorityID := testAccIDAsInt(t, priorityLookupData.Id())
+
+	policyResource := resourcePriorityPolicy()
+	policyData := testAccCreateResource(t, ctx, policyResource, config, map[string]interface{}{
+		"team_id":              teamID,
+		"name":                 "Production priority " + suffix,
+		"description":          "Terraform-managed incident priority policy.",
+		"enabled":              true,
+		"default_for_team":     true,
+		"update_mode":          "raise_only",
+		"source_priority_mode": "ignore",
+		"fallback_mode":        "severity_mapping",
+	})
+	policyID := testAccIDAsInt(t, policyData.Id())
+
+	testAccImportReadResource(t, ctx, resourcePriorityPolicy(), config, policyData, nil, map[string]interface{}{
+		"team_id":              teamID,
+		"name":                 "Production priority " + suffix,
+		"default_for_team":     true,
+		"update_mode":          "raise_only",
+		"source_priority_mode": "ignore",
+		"fallback_mode":        "severity_mapping",
+	})
+
+	testAccUpdateResource(t, ctx, policyResource, policyData, config, map[string]interface{}{
+		"update_mode":          "recalculate",
+		"source_priority_mode": "prefer",
+		"fallback_mode":        "fixed_priority",
+		"fallback_priority_id": priorityID,
+	}, map[string]interface{}{
+		"update_mode":          "recalculate",
+		"source_priority_mode": "prefer",
+		"fallback_mode":        "fixed_priority",
+		"fallback_priority_id": priorityID,
+	})
+
+	ruleResource := resourcePriorityPolicyRule()
+	ruleData := testAccCreateResource(t, ctx, ruleResource, config, map[string]interface{}{
+		"policy_id":     policyID,
+		"name":          "Critical production " + suffix,
+		"description":   "Set P1 for critical production alerts.",
+		"matchers_json": `{"severity":"critical"}`,
+		"priority_id":   priorityID,
+		"enabled":       true,
+	})
+	if got, ok := intFromInterface(ruleData.Get("position")); !ok || got != 1 {
+		t.Fatalf("priority rule position = %#v, want 1", ruleData.Get("position"))
+	}
+
+	testAccImportReadResource(t, ctx, resourcePriorityPolicyRule(), config, ruleData, map[string]interface{}{
+		"policy_id": policyID,
+	}, map[string]interface{}{
+		"name":        "Critical production " + suffix,
+		"position":    1,
+		"priority_id": priorityID,
+		"enabled":     true,
+	})
+
+	testAccUpdateResource(t, ctx, ruleResource, ruleData, config, map[string]interface{}{
+		"description": "Updated priority rule.",
+		"enabled":     false,
+	}, map[string]interface{}{
+		"description": "Updated priority rule.",
+		"priority_id": priorityID,
+		"enabled":     false,
+	})
+
+	serviceData := testAccCreateResource(t, ctx, resourceService(), config, map[string]interface{}{
+		"team_id":            teamID,
+		"slug":               "tfprio-svc-" + suffix,
+		"name":               "Priority service " + suffix,
+		"description":        "Terraform priority policy service assignment.",
+		"priority_policy_id": policyID,
+		"enabled":            true,
+	})
+	if got, want := serviceData.Get("priority_policy_id"), policyID; got != want {
+		t.Fatalf("service priority_policy_id = %v, want %v", got, want)
+	}
+	if got, want := serviceData.Get("priority_policy_name"), policyData.Get("name"); got != want {
+		t.Fatalf("service priority_policy_name = %v, want %v", got, want)
+	}
+}
+
 func TestAccIncidentRelayCoreResources(t *testing.T) {
 	config := testAccProviderConfig(t)
 	ctx := context.Background()
@@ -342,6 +482,21 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 	channelID := testAccIDAsInt(t, channelData.Id())
 
+	channelLookup := datasourceChannel()
+	channelLookupData := schema.TestResourceDataRaw(t, channelLookup.Schema, map[string]interface{}{
+		"group_slug":   groupData.Get("slug"),
+		"team_slug":    teamData.Get("slug"),
+		"name":         channelData.Get("name"),
+		"channel_type": "email",
+	})
+	testAccRequireNoDiags(t, channelLookup.ReadContext(ctx, channelLookupData, config))
+	if got, want := channelLookupData.Id(), channelData.Id(); got != want {
+		t.Fatalf("channel lookup id = %q, want %q", got, want)
+	}
+	if got, want := channelLookupData.Get("channel_type"), "email"; got != want {
+		t.Fatalf("channel lookup type = %v, want %v", got, want)
+	}
+
 	rotationData := testAccCreateResource(t, ctx, resourceRotation(), config, map[string]interface{}{
 		"team_id":                   teamID,
 		"name":                      "Acc rotation " + suffix,
@@ -431,6 +586,20 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 	})
 	escalationPolicyID := testAccIDAsInt(t, escalationPolicyData.Id())
 
+	escalationPolicyLookup := datasourceEscalationPolicy()
+	escalationPolicyLookupData := schema.TestResourceDataRaw(t, escalationPolicyLookup.Schema, map[string]interface{}{
+		"group_slug": groupData.Get("slug"),
+		"team_slug":  teamData.Get("slug"),
+		"name":       escalationPolicyData.Get("name"),
+	})
+	testAccRequireNoDiags(t, escalationPolicyLookup.ReadContext(ctx, escalationPolicyLookupData, config))
+	if got, want := escalationPolicyLookupData.Id(), escalationPolicyData.Id(); got != want {
+		t.Fatalf("escalation policy lookup id = %q, want %q", got, want)
+	}
+	if got, want := escalationPolicyLookupData.Get("repeat_count"), 1; got != want {
+		t.Fatalf("escalation policy lookup repeat_count = %v, want %v", got, want)
+	}
+
 	escalationPolicyRuleData := testAccCreateResource(t, ctx, resourceEscalationPolicyRule(), config, map[string]interface{}{
 		"policy_id":     escalationPolicyID,
 		"position":      1,
@@ -466,6 +635,19 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"enabled":     true,
 	})
 	notificationPolicyID := testAccIDAsInt(t, notificationPolicyData.Id())
+
+	notificationPolicyLookup := datasourceNotificationPolicy()
+	notificationPolicyLookupData := schema.TestResourceDataRaw(t, notificationPolicyLookup.Schema, map[string]interface{}{
+		"team_id": teamID,
+		"name":    notificationPolicyData.Get("name"),
+	})
+	testAccRequireNoDiags(t, notificationPolicyLookup.ReadContext(ctx, notificationPolicyLookupData, config))
+	if got, want := notificationPolicyLookupData.Id(), notificationPolicyData.Id(); got != want {
+		t.Fatalf("notification policy lookup id = %q, want %q", got, want)
+	}
+	if got, want := notificationPolicyLookupData.Get("rules_count"), 0; got != want {
+		t.Fatalf("notification policy lookup rules_count = %v, want %v", got, want)
+	}
 
 	notificationPolicyRuleData := testAccCreateResource(t, ctx, resourceNotificationPolicyRule(), config, map[string]interface{}{
 		"policy_id":         notificationPolicyID,
@@ -571,6 +753,20 @@ func TestAccIncidentRelayOnCallRoutingResources(t *testing.T) {
 		"matchers_json": `{"labels":{"service":"api","environment":"testing"}}`,
 		"enabled":       true,
 	})
+
+	serviceMatchRuleLookup := datasourceServiceMatchRule()
+	serviceMatchRuleLookupData := schema.TestResourceDataRaw(t, serviceMatchRuleLookup.Schema, map[string]interface{}{
+		"service_id": serviceID,
+		"name":       serviceMatchRuleData.Get("name"),
+	})
+	testAccRequireNoDiags(t, serviceMatchRuleLookup.ReadContext(ctx, serviceMatchRuleLookupData, config))
+	if got, want := serviceMatchRuleLookupData.Id(), serviceMatchRuleData.Id(); got != want {
+		t.Fatalf("service match rule lookup id = %q, want %q", got, want)
+	}
+	if got, want := serviceMatchRuleLookupData.Get("route_id"), routeID; got != want {
+		t.Fatalf("service match rule lookup route_id = %v, want %v", got, want)
+	}
+
 	testAccImportReadResource(t, ctx, resourceServiceMatchRule(), config, serviceMatchRuleData, map[string]interface{}{
 		"service_id": serviceID,
 	}, map[string]interface{}{

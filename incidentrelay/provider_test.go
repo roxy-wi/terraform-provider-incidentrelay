@@ -27,6 +27,8 @@ func TestProviderInternalValidate(t *testing.T) {
 		"incidentrelay_channel",
 		"incidentrelay_route",
 		"incidentrelay_rotation_override",
+		"incidentrelay_priority_policy",
+		"incidentrelay_priority_policy_rule",
 		"incidentrelay_service",
 		"incidentrelay_heartbeat",
 		"incidentrelay_business_service",
@@ -41,7 +43,13 @@ func TestProviderInternalValidate(t *testing.T) {
 		"incidentrelay_group",
 		"incidentrelay_team",
 		"incidentrelay_user",
+		"incidentrelay_channel",
 		"incidentrelay_service",
+		"incidentrelay_rotation",
+		"incidentrelay_incident_priority",
+		"incidentrelay_escalation_policy",
+		"incidentrelay_notification_policy",
+		"incidentrelay_service_match_rule",
 	} {
 		if provider.DataSourcesMap[name] == nil {
 			t.Fatalf("provider missing data source %s", name)

@@ -39,7 +39,7 @@ For child resources that are read through a parent list endpoint, keep the
 parent ID in configuration before importing. Examples include memberships,
 rotation layers, rotation layer members, rotation overrides, escalation policy
 rules, notification policy rules, SSO group mappings, business service
-components, and service child resources.
+components, priority policy rules, and service child resources.
 
 ## Import IDs
 
@@ -60,6 +60,8 @@ components, and service child resources.
 | `incidentrelay_rotation_override` | Override ID | Configure `rotation_id` before import. |
 | `incidentrelay_escalation_policy` | Policy ID | Direct read. |
 | `incidentrelay_escalation_policy_rule` | Rule ID | Configure `policy_id` before import. |
+| `incidentrelay_priority_policy` | Policy ID | Direct read. `team_id` cannot be changed. |
+| `incidentrelay_priority_policy_rule` | `policy_id/rule_id` | Parent policy and rule IDs are required by the nested API. |
 | `incidentrelay_notification_policy` | Policy ID | Direct read. |
 | `incidentrelay_notification_policy_rule` | Rule ID | Configure `policy_id` before import. |
 | `incidentrelay_service` | Service ID | Direct read. |

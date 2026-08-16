@@ -8,7 +8,7 @@ configuration and adapt.
 - `provider`: minimal provider configuration and a small starter setup.
 - `authentication`: token and username/password provider patterns.
 - `core-oncall`: groups, users, teams, memberships, channels, rotations, routes,
-  escalation, and notification policies.
+  escalation, incident priority, and notification policies.
 - `service-catalog`: services, match rules, links, runbooks, dependencies,
   business services, and business service components.
 - `maintenance`: silences and maintenance windows.
@@ -16,8 +16,9 @@ configuration and adapt.
 - `incidentrelay-1.2`: Datadog routing and Slack Socket Mode with masked-secret
   refresh compatibility.
 - `sso`: OIDC provider configuration and external group mapping.
-- `data-sources`: looking up existing groups, teams, users, services, and
-  service version information.
+- `data-sources`: looking up existing groups, teams, users, notification
+  channels, services, rotations, incident priorities, escalation and
+  notification policies, service match rules, and service version information.
 - `imports`: Terraform 1.5+ import blocks and classic `terraform import`
   commands.
 

@@ -21,6 +21,9 @@ resource "incidentrelay_service_match_rule" "api" {
 }
 ```
 
+Configure at least one of `matcher_preset_id` or a non-empty `matchers_json`
+object, as required by the IncidentRelay API. Both can be used together.
+
 ## Import
 
 Keep `service_id` in configuration before importing.
