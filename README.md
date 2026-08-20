@@ -4,7 +4,7 @@ Terraform provider for managing IncidentRelay configuration as code: access
 groups, users, teams, notification channels, alert routes, on-call rotations,
 escalation and notification policies, service catalog objects, silences,
 incident priority policies, maintenance windows, heartbeats, business services,
-and OIDC/SAML SSO.
+Event Orchestration, reusable orchestration webhooks, and OIDC/SAML SSO.
 
 The provider talks to the IncidentRelay HTTP API and supports both personal/API
 Bearer tokens and username/password login.
@@ -17,13 +17,13 @@ Bearer tokens and username/password login.
 
 ## IncidentRelay Compatibility
 
-The current provider code is tested against IncidentRelay 1.2. It supports the
-1.2 Datadog route source and Slack Bot API channels using either HTTP actions or
-Socket Mode. IncidentRelay 1.2 masks Slack secrets in API responses; the
-provider preserves the configured values during refresh so that masking does
-not cause perpetual Terraform drift. It also manages the SSO provider and group
-mapping APIs, incident priority policies, and priority-policy service
-assignments available in IncidentRelay 1.2.
+The current provider code is tested against IncidentRelay 2.0. It manages Event
+Orchestration definitions and reusable webhook actions, lifecycle-aware
+silences and maintenance windows, and the Uptime Kuma route source. It also
+supports Datadog routes, Slack Bot API channels over HTTP actions or Socket
+Mode, SSO providers and group mappings, and incident priority policies. The
+provider preserves API-masked Slack, SSO, and orchestration webhook secrets
+during refresh so masking does not cause perpetual Terraform drift.
 
 ## Quick Start
 
@@ -32,7 +32,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.4"
+      version = "~> 0.6"
     }
   }
 }
@@ -121,6 +121,8 @@ IncidentRelay instance with a self-signed certificate.
 - `incidentrelay_silence`
 - `incidentrelay_maintenance_window`
 - `incidentrelay_heartbeat`
+- `incidentrelay_event_orchestration`
+- `incidentrelay_orchestration_webhook_action`
 - `incidentrelay_business_service`
 - `incidentrelay_business_service_component`
 
@@ -139,9 +141,10 @@ IncidentRelay instance with a self-signed certificate.
 - `incidentrelay_service_match_rule`
 
 Nested API objects such as channel `config`, route `matchers`, service
-`labels`, maintenance `scopes`, and heartbeat `metadata` are represented as
-validated JSON strings. This keeps the provider compatible with IncidentRelay's
-matcher and integration DSL without forcing every nested field into Terraform.
+`labels`, maintenance `scopes`, heartbeat `metadata`, orchestration `rules`,
+and webhook `headers` are represented as validated JSON strings. This keeps the
+provider compatible with IncidentRelay's nested DSLs without forcing every API
+field into Terraform.
 
 Channel `config_json` is marked sensitive because it can contain credentials.
 Terraform still stores sensitive values in state, so use an encrypted remote
@@ -150,6 +153,10 @@ backend and restrict access to state files.
 SSO `client_secret` and `saml_sp_private_key` are also marked sensitive. The
 IncidentRelay API returns only flags indicating whether those secrets exist;
 the provider preserves configured secret values during refresh.
+
+Orchestration webhook `url` and `headers_json` are sensitive as well. Headers
+are write-only, and URLs may be returned with embedded credentials redacted;
+the provider preserves configured values in both cases.
 
 Use `jsonencode(...)` for those fields:
 
@@ -171,6 +178,7 @@ matchers_json = jsonencode({
 - [Maintenance and silences](examples/maintenance/main.tf)
 - [Heartbeat monitoring](examples/heartbeat/main.tf)
 - [IncidentRelay 1.2: Datadog and Slack Socket Mode](examples/incidentrelay-1.2/main.tf)
+- [IncidentRelay 2.0: Event Orchestration and Uptime Kuma](examples/incidentrelay-2.0/main.tf)
 - [OIDC SSO and group mapping](examples/sso/main.tf)
 - [Data source lookups](examples/data-sources/main.tf)
 - [Terraform import blocks](examples/imports/main.tf)
@@ -194,7 +202,7 @@ make install-local
 This installs the provider under:
 
 ```text
-~/.terraform.d/plugins/registry.terraform.io/roxy-wi/incidentrelay/0.4.0/<os>_<arch>/
+~/.terraform.d/plugins/registry.terraform.io/roxy-wi/incidentrelay/0.6.0/<os>_<arch>/
 ```
 
 ## Example
@@ -245,8 +253,8 @@ Add the corresponding ASCII-armored public key in Terraform Registry settings fo
 the `roxy-wi` namespace. Then create and push a semver tag:
 
 ```sh
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 After the GitHub release is published, use Terraform Registry's `Publish >

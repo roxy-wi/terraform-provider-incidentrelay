@@ -23,6 +23,7 @@ type resourceSpec struct {
 	ReadListPath  pathFunc
 	ReadListField string
 	UpdatePath    idPathFunc
+	UpdateMethod  string
 	DeletePath    idPathFunc
 	CreateFields  []string
 	UpdateFields  []string
@@ -138,7 +139,11 @@ func crudUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, spec
 	}
 
 	var response map[string]interface{}
-	if err := client.Do(ctx, http.MethodPut, spec.UpdatePath(d.Id(), d), payload, &response); err != nil {
+	method := spec.UpdateMethod
+	if method == "" {
+		method = http.MethodPut
+	}
+	if err := client.Do(ctx, method, spec.UpdatePath(d.Id(), d), payload, &response); err != nil {
 		return diag.FromErr(err)
 	}
 	if len(response) > 0 {

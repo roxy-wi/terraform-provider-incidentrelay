@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-08-20
+
+### IncidentRelay 2.0 compatibility
+
+- Add `incidentrelay_event_orchestration`, which manages metadata, a JSON rule
+  tree, immutable publication, and `disabled`/`shadow`/`active` runtime modes.
+- Add `incidentrelay_orchestration_webhook_action` with encrypted write-only
+  header preservation and redacted-URL drift protection.
+- Add `apply_to_existing` and `reactivate_on_end` to silences and maintenance
+  windows.
+- Add `matcher_preset_id` to silences and manage their enabled state through
+  the IncidentRelay 2.0 lifecycle endpoints instead of sending an unsupported
+  request field.
+- Document the new `uptime_kuma` route source.
+- Document the granular IncidentRelay 2.0 API-token scopes required by each
+  Terraform configuration domain.
+
+## 0.5.0 - 2026-08-16
+
 ### Priority policies and lookups
 
 - Add `incidentrelay_priority_policy` and

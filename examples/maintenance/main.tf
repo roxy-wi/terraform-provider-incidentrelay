@@ -2,7 +2,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.4"
+      version = "~> 0.6"
     }
   }
 }
@@ -36,6 +36,9 @@ resource "incidentrelay_silence" "deploy" {
   starts_at = "2026-07-13T22:00:00"
   ends_at   = "2026-07-14T01:00:00"
 
+  apply_to_existing = true
+  reactivate_on_end = true
+
   matchers_json = jsonencode({
     labels = {
       service = "platform-api"
@@ -50,6 +53,9 @@ resource "incidentrelay_maintenance_window" "deploy" {
   timezone    = "Europe/Moscow"
   starts_at   = "2026-07-13T22:00:00"
   ends_at     = "2026-07-14T01:00:00"
+
+  apply_to_existing = true
+  reactivate_on_end = true
 
   scopes_json = jsonencode([
     {

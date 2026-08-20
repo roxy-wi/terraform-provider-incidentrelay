@@ -16,6 +16,9 @@ resource "incidentrelay_maintenance_window" "deploy" {
   ends_at   = "2026-07-14T01:00:00"
   timezone  = "Europe/Moscow"
 
+  apply_to_existing = true
+  reactivate_on_end = true
+
   scopes_json = jsonencode([
     {
       scope_type = "team"
@@ -24,6 +27,11 @@ resource "incidentrelay_maintenance_window" "deploy" {
   ])
 }
 ```
+
+`apply_to_existing` retroactively applies the maintenance behavior to matching
+unresolved alerts. `reactivate_on_end` controls whether IncidentRelay resumes
+alerts whose lifecycle was suppressed when the window ends. The API rejects
+`apply_to_existing = true` with `behavior = "suppress_incident"`.
 
 ## Import
 

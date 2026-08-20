@@ -171,7 +171,7 @@ func resourceRoute() *schema.Resource {
 	fields := []fieldDef{
 		reqInt("team_id", "Owner team id."),
 		reqString("name", "Route name."),
-		reqString("source", "Incoming alert source: alertmanager, aws_sns, datadog, grafana, zabbix, webhook, sentry, librenms, rmon, or heartbeat."),
+		reqString("source", "Incoming alert source: alertmanager, aws_sns, datadog, grafana, zabbix, webhook, sentry, librenms, rmon, uptime_kuma, or heartbeat."),
 		optInt("rotation_id", "Rotation id used by this route."),
 		optInt("service_id", "Default service id for this route."),
 		optInt("escalation_policy_id", "Escalation policy id used by this route."),

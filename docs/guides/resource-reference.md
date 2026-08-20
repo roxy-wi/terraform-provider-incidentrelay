@@ -12,9 +12,10 @@ contain focused examples; this page is a compact map for day-to-day authoring.
 
 ## Common Field Limits
 
-For all provider resources and data sources, fields named exactly `name` or
-`slug` are limited to 40 characters. Fields named exactly `description` are
-limited to 120 characters.
+Most provider resources and data sources limit fields named exactly `name` or
+`slug` to 40 characters and `description` to 120 characters. Event
+Orchestration follows its API limits: names up to 255 characters and
+descriptions up to 8192 characters.
 
 ## Identity And Access
 
@@ -121,6 +122,34 @@ Incoming alert route.
   regeneration.
 - When `escalation_policy_id` is configured, the provider sends policy
   escalation mode to the API automatically.
+- IncidentRelay 2.0 adds `uptime_kuma` to the supported `source` values.
+
+## Event Orchestration
+
+### `incidentrelay_event_orchestration`
+
+Versioned orchestration rule tree and runtime configuration.
+
+- Required: `group_id`, `name`.
+- Optional: `description`, `scope`, `service_id`, `compatibility_mode`,
+  `rules_json`, `publish_comment`, `confirm_catch_all_drop`, `mode`.
+- Computed: `enabled`, `uid`, `active_version_id`,
+  `active_version_number`, `created_at`, `updated_at`.
+- JSON: `rules_json` must be an array.
+- Import: numeric orchestration ID.
+- A change to `rules_json` creates and publishes a new immutable version before
+  the provider applies the runtime mode.
+
+### `incidentrelay_orchestration_webhook_action`
+
+Reusable encrypted webhook action for orchestration rules.
+
+- Required: `group_id`, `name`, `url`.
+- Optional: `description`, `method`, `headers_json`, `body_template`,
+  `timeout_seconds`, `retry_count`, `private_network_policy`, `enabled`.
+- Computed: `uid`, `has_headers`, `created_at`, `updated_at`.
+- Sensitive: `url`, `headers_json`. JSON: `headers_json`.
+- Import: numeric action ID. Configure write-only headers after import.
 
 ## Rotations
 
@@ -294,7 +323,8 @@ Upstream service dependency.
 Temporary alert silence.
 
 - Required: `team_id`, `name`, `starts_at`, `ends_at`.
-- Optional: `reason`, `matchers_json`, `enabled`.
+- Optional: `reason`, `matcher_preset_id`, `matchers_json`,
+  `apply_to_existing`, `reactivate_on_end`, `enabled`.
 - JSON: `matchers_json`.
 - Import: numeric silence ID.
 
@@ -303,7 +333,8 @@ Temporary alert silence.
 Maintenance window with scoped suppression behavior.
 
 - Required: `name`, `starts_at`, `ends_at`, `scopes_json`.
-- Optional: `description`, `behavior`, `timezone`, `rrule`, `enabled`.
+- Optional: `description`, `behavior`, `timezone`, `rrule`, `enabled`,
+  `apply_to_existing`, `reactivate_on_end`.
 - Computed: `status`, `deleted`.
 - JSON: `scopes_json`.
 - Import: numeric maintenance window ID.

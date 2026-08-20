@@ -1,27 +1,94 @@
 package incidentrelay
 
-import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+import (
+	"context"
+	"fmt"
+	"net/http"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+)
 
 func resourceSilence() *schema.Resource {
 	fields := []fieldDef{
 		reqInt("team_id", "Owner team id."),
 		reqString("name", "Silence name."),
 		optString("reason", "Optional silence reason."),
+		optInt("matcher_preset_id", "Optional matcher preset id."),
 		optJSONDefault("matchers_json", "matchers", "{}", "Alert matcher JSON."),
 		reqString("starts_at", "Silence start datetime."),
 		reqString("ends_at", "Silence end datetime."),
+		optBoolDefault("apply_to_existing", false, "Whether the silence is applied retroactively to matching unresolved alerts."),
+		optBoolDefault("reactivate_on_end", true, "Whether alerts suppressed by this silence are reactivated when it ends."),
 		optBoolDefault("enabled", true, "Whether the silence is enabled."),
 	}
-	return crudResource(resourceSpec{
+	spec := resourceSpec{
 		Description:  "IncidentRelay alert silence.",
 		Fields:       fields,
 		CreatePath:   createPath("/api/silences"),
 		ReadPath:     idPath("/api/silences/%s"),
 		UpdatePath:   idPath("/api/silences/%s"),
 		DeletePath:   idPath("/api/silences/%s"),
-		CreateFields: []string{"team_id", "name", "reason", "matchers_json", "starts_at", "ends_at", "enabled"},
-		UpdateFields: []string{"team_id", "name", "reason", "matchers_json", "starts_at", "ends_at", "enabled"},
-	})
+		CreateFields: []string{"team_id", "name", "reason", "matcher_preset_id", "matchers_json", "starts_at", "ends_at", "apply_to_existing", "reactivate_on_end"},
+		UpdateFields: []string{"team_id", "name", "reason", "matcher_preset_id", "matchers_json", "starts_at", "ends_at", "apply_to_existing", "reactivate_on_end"},
+	}
+	resource := crudResource(spec)
+	resource.CreateWithoutTimeout = func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+		return silenceCreate(ctx, d, m, spec)
+	}
+	resource.UpdateWithoutTimeout = func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
+		return silenceUpdate(ctx, d, m, spec)
+	}
+	resource.Schema["matcher_preset_id"].ValidateFunc = validation.IntAtLeast(1)
+	return resource
+}
+
+func silenceCreate(ctx context.Context, d *schema.ResourceData, m interface{}, spec resourceSpec) diag.Diagnostics {
+	client := m.(*Config).Client
+	desiredEnabled := d.Get("enabled").(bool)
+	payload, err := buildPayload(d, spec.Fields, spec.CreateFields, false)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	var response map[string]interface{}
+	if err := client.Do(ctx, http.MethodPost, spec.CreatePath(d), payload, &response); err != nil {
+		return diag.FromErr(err)
+	}
+	if err := setIDFromResponse(d, response); err != nil {
+		return diag.FromErr(err)
+	}
+	if !desiredEnabled {
+		if err := client.Do(ctx, http.MethodDelete, spec.DeletePath(d.Id(), d), nil, nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+	return crudRead(ctx, d, m, spec)
+}
+
+func silenceUpdate(ctx context.Context, d *schema.ResourceData, m interface{}, spec resourceSpec) diag.Diagnostics {
+	client := m.(*Config).Client
+	desiredEnabled := d.Get("enabled").(bool)
+	enabledChanged := d.HasChange("enabled")
+	payload, err := buildPayload(d, spec.Fields, spec.UpdateFields, true)
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if err := client.Do(ctx, http.MethodPut, spec.UpdatePath(d.Id(), d), payload, nil); err != nil {
+		return diag.FromErr(err)
+	}
+
+	if enabledChanged && desiredEnabled {
+		if err := client.Do(ctx, http.MethodPost, fmt.Sprintf("/api/silences/%s/enable", d.Id()), nil, nil); err != nil {
+			return diag.FromErr(err)
+		}
+	} else if enabledChanged && !desiredEnabled {
+		if err := client.Do(ctx, http.MethodDelete, spec.DeletePath(d.Id(), d), nil, nil); err != nil {
+			return diag.FromErr(err)
+		}
+	}
+	return crudRead(ctx, d, m, spec)
 }
 
 func resourceMaintenanceWindow() *schema.Resource {
@@ -34,6 +101,8 @@ func resourceMaintenanceWindow() *schema.Resource {
 		reqString("starts_at", "Maintenance start as wall-clock time in the selected timezone."),
 		reqString("ends_at", "Maintenance end as wall-clock time in the selected timezone."),
 		optBoolDefault("enabled", true, "Whether the maintenance window is enabled."),
+		optBoolDefault("apply_to_existing", false, "Whether the window is applied retroactively to matching unresolved alerts."),
+		optBoolDefault("reactivate_on_end", true, "Whether alerts suppressed by this window are reactivated when it ends."),
 		reqJSON("scopes_json", "scopes", "Maintenance scopes JSON array."),
 		computedString("status", "Effective maintenance status."),
 		computedBool("deleted", "Whether the window is deleted."),
@@ -45,8 +114,8 @@ func resourceMaintenanceWindow() *schema.Resource {
 		ReadPath:     idPath("/api/maintenance-windows/%s"),
 		UpdatePath:   idPath("/api/maintenance-windows/%s"),
 		DeletePath:   idPath("/api/maintenance-windows/%s"),
-		CreateFields: []string{"name", "description", "behavior", "timezone", "rrule", "starts_at", "ends_at", "enabled", "scopes_json"},
-		UpdateFields: []string{"name", "description", "behavior", "timezone", "rrule", "starts_at", "ends_at", "enabled", "scopes_json"},
+		CreateFields: []string{"name", "description", "behavior", "timezone", "rrule", "starts_at", "ends_at", "enabled", "apply_to_existing", "reactivate_on_end", "scopes_json"},
+		UpdateFields: []string{"name", "description", "behavior", "timezone", "rrule", "starts_at", "ends_at", "enabled", "apply_to_existing", "reactivate_on_end", "scopes_json"},
 	})
 }
 

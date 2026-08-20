@@ -72,6 +72,8 @@ components, priority policy rules, and service child resources.
 | `incidentrelay_silence` | Silence ID | Direct read. |
 | `incidentrelay_maintenance_window` | Maintenance window ID | Direct read. |
 | `incidentrelay_heartbeat` | Heartbeat ID | Token and ping URL are only returned on create/regeneration. |
+| `incidentrelay_event_orchestration` | Orchestration ID | Configure `group_id`; published rules are read from the active version. |
+| `incidentrelay_orchestration_webhook_action` | Action ID | Configure `group_id`, URL credentials, and write-only headers before apply. |
 | `incidentrelay_business_service` | Business service ID | Direct read. |
 | `incidentrelay_business_service_component` | Component ID | Configure `business_service_id` before import. |
 

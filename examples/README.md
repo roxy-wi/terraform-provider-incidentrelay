@@ -15,6 +15,8 @@ configuration and adapt.
 - `heartbeat`: heartbeat dead-man-switch configuration.
 - `incidentrelay-1.2`: Datadog routing and Slack Socket Mode with masked-secret
   refresh compatibility.
+- `incidentrelay-2.0`: Event Orchestration, reusable webhook actions, and an
+  Uptime Kuma route.
 - `sso`: OIDC provider configuration and external group mapping.
 - `data-sources`: looking up existing groups, teams, users, notification
   channels, services, rotations, incident priorities, escalation and

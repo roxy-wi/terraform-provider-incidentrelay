@@ -1,7 +1,7 @@
 ---
 page_title: "IncidentRelay Provider"
 description: |-
-  The IncidentRelay provider manages IncidentRelay access, SSO, on-call, alert routing, service catalog, maintenance, heartbeat, and business-service configuration.
+  The IncidentRelay provider manages IncidentRelay access, SSO, on-call, alert routing, Event Orchestration, service catalog, maintenance, heartbeat, and business-service configuration.
 ---
 
 # IncidentRelay Provider
@@ -10,15 +10,16 @@ Use the IncidentRelay provider to manage IncidentRelay configuration as code:
 groups, users, teams, notification channels, alert routes, rotations, escalation
 policies, notification policies, service catalog objects, maintenance windows,
 incident priority policies, silences, heartbeats, business services, OIDC/SAML
-providers, and SSO group mappings.
+providers, SSO group mappings, and Event Orchestration.
 
 The provider communicates with the IncidentRelay HTTP API. Use token
 authentication for automation and username/password authentication for local
 development or bootstrap workflows.
 
-The current provider code is tested against IncidentRelay 1.2, including
-Datadog routes, Slack Bot API channels using HTTP actions or Socket Mode, and
-SSO provider and group mapping administration.
+The current provider code is tested against IncidentRelay 2.0, including Event
+Orchestration, reusable orchestration webhooks, Uptime Kuma and Datadog routes,
+Slack Bot API channels using HTTP actions or Socket Mode, and SSO provider and
+group mapping administration.
 
 ## Example Usage
 
@@ -27,7 +28,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.4"
+      version = "~> 0.6"
     }
   }
 }

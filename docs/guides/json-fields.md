@@ -8,8 +8,9 @@ description: |-
 # JSON Fields
 
 IncidentRelay uses JSON objects for matchers, labels, metadata, integration
-configuration, channel configuration, and maintenance scopes. The provider
-represents those API fields as Terraform strings with JSON validation.
+configuration, channel configuration, maintenance scopes, and Event
+Orchestration rules and webhook headers. The provider represents those API
+fields as Terraform strings with JSON validation.
 
 Always prefer `jsonencode(...)` instead of writing JSON by hand:
 
@@ -132,6 +133,36 @@ resource "incidentrelay_maintenance_window" "deploy" {
   ])
 }
 ```
+
+## Event Orchestration Rules
+
+`rules_json` is an ordered JSON array. IncidentRelay validates the nested
+condition and action DSL when the provider publishes the version.
+
+```hcl
+rules_json = jsonencode([
+  {
+    name = "Critical production"
+    condition_tree = {
+      field    = "event.severity"
+      operator = "equals"
+      value    = "critical"
+    }
+    actions = [
+      {
+        type  = "set_priority"
+        value = "P1"
+      }
+    ]
+    processing_mode = "continue"
+    children        = []
+  }
+])
+```
+
+Webhook-action `headers_json` must be a JSON object. It is sensitive and
+write-only in IncidentRelay, so the provider retains the configured state value
+during refresh.
 
 ## Drift Behavior
 

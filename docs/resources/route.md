@@ -49,6 +49,16 @@ resource "incidentrelay_route" "datadog" {
 Send Datadog webhooks to the route-specific IncidentRelay Datadog intake
 endpoint using the one-time intake token returned when the route is created.
 
+IncidentRelay 2.0 also supports Uptime Kuma's standard webhook payload:
+
+```hcl
+resource "incidentrelay_route" "uptime_kuma" {
+  team_id = incidentrelay_team.platform.id
+  name    = "platform-uptime-kuma"
+  source  = "uptime_kuma"
+}
+```
+
 ## Import
 
 ```sh
