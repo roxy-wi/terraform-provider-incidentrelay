@@ -14,18 +14,23 @@ import (
 
 func TestSSOProviderResourceCRUDPreservesSecrets(t *testing.T) {
 	state := map[string]interface{}{
-		"id":                               301,
-		"slug":                             "corporate-oidc",
-		"label":                            "Corporate OIDC",
-		"protocol":                         "oidc",
-		"enabled":                          true,
-		"subject_claim":                    "sub",
-		"email_claim":                      "email",
-		"username_claim":                   "preferred_username",
-		"display_name_claim":               "name",
-		"groups_claim":                     "groups",
-		"phone_claim":                      "mobile",
-		"allowed_domains":                  []interface{}{"example.com"},
+		"id":                 301,
+		"slug":               "corporate-oidc",
+		"label":              "Corporate OIDC",
+		"protocol":           "oidc",
+		"enabled":            true,
+		"subject_claim":      "sub",
+		"email_claim":        "email",
+		"username_claim":     "preferred_username",
+		"display_name_claim": "name",
+		"groups_claim":       "groups",
+		"phone_claim":        "mobile",
+		"allowed_domains":    []interface{}{"example.com"},
+		"profile_claim_mappings": map[string]interface{}{
+			"slack_user_id":      "slack_id",
+			"telegram_user_id":   "telegram_id",
+			"mattermost_user_id": "mattermost_id",
+		},
 		"auto_create_users":                true,
 		"auto_link_by_email":               true,
 		"require_verified_email":           true,
@@ -55,6 +60,14 @@ func TestSSOProviderResourceCRUDPreservesSecrets(t *testing.T) {
 			}
 			if got, want := payload["extra_config"], map[string]interface{}{}; !reflect.DeepEqual(got, want) {
 				t.Fatalf("create extra_config = %#v, want %#v", got, want)
+			}
+			wantMappings := map[string]interface{}{
+				"slack_user_id":      "slack_id",
+				"telegram_user_id":   "telegram_id",
+				"mattermost_user_id": "mattermost_id",
+			}
+			if got := payload["profile_claim_mappings"]; !reflect.DeepEqual(got, wantMappings) {
+				t.Fatalf("create profile_claim_mappings = %#v, want %#v", got, wantMappings)
 			}
 			writeJSON(t, w, state)
 
@@ -104,6 +117,11 @@ func TestSSOProviderResourceCRUDPreservesSecrets(t *testing.T) {
 		"client_id":         "incidentrelay",
 		"client_secret":     "oidc-client-secret",
 		"oidc_metadata_url": "https://idp.example.com/.well-known/openid-configuration",
+		"profile_claim_mappings_json": `{
+			"slack_user_id": "slack_id",
+			"telegram_user_id": "telegram_id",
+			"mattermost_user_id": "mattermost_id"
+		}`,
 		"extra_config_json": `{}`,
 	})
 	config := &Config{Client: client}
@@ -119,6 +137,9 @@ func TestSSOProviderResourceCRUDPreservesSecrets(t *testing.T) {
 	}
 	if got, want := data.Get("has_client_secret"), true; got != want {
 		t.Fatalf("has_client_secret = %v, want %v", got, want)
+	}
+	if got, want := data.Get("profile_claim_mappings_json"), `{"mattermost_user_id":"mattermost_id","slack_user_id":"slack_id","telegram_user_id":"telegram_id"}`; got != want {
+		t.Fatalf("profile_claim_mappings_json = %v, want %v", got, want)
 	}
 
 	if err := data.Set("label", "Corporate Login"); err != nil {
@@ -147,6 +168,49 @@ func TestSSOProviderResourceCRUDPreservesSecrets(t *testing.T) {
 	}
 	if !reflect.DeepEqual(requests, wantRequests) {
 		t.Fatalf("requests = %#v, want %#v", requests, wantRequests)
+	}
+}
+
+func TestSSOProfileClaimMappingsValidation(t *testing.T) {
+	resource := resourceSSOProvider()
+	if !resource.Schema["profile_claim_mappings_json"].Optional || !resource.Schema["profile_claim_mappings_json"].Computed {
+		t.Fatal("profile_claim_mappings_json must be optional and computed for backward-compatible omission")
+	}
+	unsetData := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
+		"slug": "corporate-oidc", "label": "Corporate OIDC",
+	})
+	if _, exists := unsetData.GetOkExists("profile_claim_mappings_json"); exists {
+		t.Fatal("unset profile_claim_mappings_json must be omitted from older API requests")
+	}
+	validate := resource.Schema["profile_claim_mappings_json"].ValidateFunc
+
+	for _, valid := range []string{
+		`{}`,
+		`null`,
+		`{"slack_user_id":"slack_id"}`,
+		`{"slack_user_id":"", "telegram_user_id":null}`,
+		`{"telegram_user_id":"telegram_id","mattermost_user_id":"mattermost_id"}`,
+	} {
+		if _, errors := validate(valid, "profile_claim_mappings_json"); len(errors) != 0 {
+			t.Fatalf("valid mappings %s returned errors: %v", valid, errors)
+		}
+	}
+
+	for _, invalid := range []string{
+		`[]`,
+		`{"email":"mail"}`,
+		`{"slack_user_id":42}`,
+	} {
+		if _, errors := validate(invalid, "profile_claim_mappings_json"); len(errors) == 0 {
+			t.Fatalf("invalid mappings %s returned no errors", invalid)
+		}
+	}
+
+	if got, want := normalizeSSOProfileClaimMappingsState(`{"slack_user_id":" slack_id ","telegram_user_id":"","mattermost_user_id":null}`), `{"slack_user_id":"slack_id"}`; got != want {
+		t.Fatalf("normalized profile claim mappings = %q, want %q", got, want)
+	}
+	if got, want := normalizeSSOProfileClaimMappingsState(`null`), `{}`; got != want {
+		t.Fatalf("normalized null profile claim mappings = %q, want %q", got, want)
 	}
 }
 

@@ -25,10 +25,10 @@ jobs:
   acceptance:
     runs-on: ubuntu-latest
     env:
-      INCIDENTRELAY_REMOTE_IMAGE: ghcr.io/roxy-wi/incidentrelay:1.2
-      INCIDENTRELAY_IMAGE: incidentrelay-acc:1.2
-      INCIDENTRELAY_SOURCE_REF: v1.2
-      INCIDENTRELAY_EXPECTED_VERSION: "1.2"
+      INCIDENTRELAY_REMOTE_IMAGE: ghcr.io/roxy-wi/incidentrelay:2.3
+      INCIDENTRELAY_IMAGE: incidentrelay-acc:2.3
+      INCIDENTRELAY_SOURCE_REF: v2.3.0
+      INCIDENTRELAY_EXPECTED_VERSION: "2.3"
       INCIDENTRELAY_BASE_URL: http://127.0.0.1:8080
       INCIDENTRELAY_USERNAME: admin
       INCIDENTRELAY_PASSWORD: change-me-123

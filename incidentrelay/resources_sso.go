@@ -2,8 +2,10 @@ package incidentrelay
 
 import (
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
@@ -42,6 +44,14 @@ func resourceSSOProvider() *schema.Resource {
 		optStringDefault("groups_claim", "groups", "Claim containing external group names."),
 		optStringDefault("phone_claim", "mobile", "Claim containing the phone number."),
 		optStringSet("allowed_domains", "Email domains allowed to authenticate through this provider."),
+		{
+			Name:        "profile_claim_mappings_json",
+			APIName:     "profile_claim_mappings",
+			Kind:        kindJSON,
+			Optional:    true,
+			Computed:    true,
+			Description: "Map IncidentRelay profile fields to SSO claim names.",
+		},
 
 		optBoolDefault("auto_create_users", false, "Automatically create local users after successful SSO login."),
 		optBoolDefault("auto_link_by_email", true, "Link SSO identities to existing users with the same email address."),
@@ -87,6 +97,7 @@ func resourceSSOProvider() *schema.Resource {
 		"groups_claim",
 		"phone_claim",
 		"allowed_domains",
+		"profile_claim_mappings_json",
 		"auto_create_users",
 		"auto_link_by_email",
 		"require_verified_email",
@@ -135,9 +146,70 @@ func resourceSSOProvider() *schema.Resource {
 	resource.Schema["allowed_domains"].Elem.(*schema.Schema).StateFunc = func(value interface{}) string {
 		return strings.ToLower(strings.TrimSpace(value.(string)))
 	}
+	resource.Schema["profile_claim_mappings_json"].ValidateFunc = validateSSOProfileClaimMappings
+	resource.Schema["profile_claim_mappings_json"].StateFunc = normalizeSSOProfileClaimMappingsState
 	resource.Schema["extra_config_json"].StateFunc = normalizeSSOExtraConfigState
 
 	return resource
+}
+
+func validateSSOProfileClaimMappings(value interface{}, key string) ([]string, []error) {
+	raw, ok := value.(string)
+	if !ok {
+		return nil, []error{fmt.Errorf("%s must be a JSON object", key)}
+	}
+
+	var mappings map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &mappings); err != nil {
+		return nil, []error{fmt.Errorf("%s must be a JSON object: %w", key, err)}
+	}
+
+	allowed := map[string]struct{}{
+		"slack_user_id":      {},
+		"telegram_user_id":   {},
+		"mattermost_user_id": {},
+	}
+	for target, rawClaim := range mappings {
+		if _, ok := allowed[target]; !ok {
+			return nil, []error{fmt.Errorf("%s supports only slack_user_id, telegram_user_id, and mattermost_user_id", key)}
+		}
+		if rawClaim == nil {
+			continue
+		}
+		claim, ok := rawClaim.(string)
+		if !ok {
+			return nil, []error{fmt.Errorf("%s.%s must be a string or null", key, target)}
+		}
+		if utf8.RuneCountInString(strings.TrimSpace(claim)) > 128 {
+			return nil, []error{fmt.Errorf("%s.%s must be no longer than 128 characters", key, target)}
+		}
+	}
+	return nil, nil
+}
+
+func normalizeSSOProfileClaimMappingsState(value interface{}) string {
+	raw, _ := value.(string)
+	var mappings map[string]interface{}
+	if err := json.Unmarshal([]byte(raw), &mappings); err != nil {
+		return raw
+	}
+
+	normalized := make(map[string]string, len(mappings))
+	for target, rawClaim := range mappings {
+		claim, ok := rawClaim.(string)
+		if !ok {
+			continue
+		}
+		if claim = strings.TrimSpace(claim); claim != "" {
+			normalized[target] = claim
+		}
+	}
+
+	encoded, err := json.Marshal(normalized)
+	if err != nil {
+		return raw
+	}
+	return string(encoded)
 }
 
 func resourceSSOGroupMapping() *schema.Resource {

@@ -55,12 +55,13 @@ Membership of an existing user in a group.
 OIDC or SAML identity provider used for IncidentRelay login.
 
 - Required: `slug`, `label`.
-- Optional: `protocol`, `enabled`, claim names, `allowed_domains`, user
+- Optional: `protocol`, `enabled`, claim names, `allowed_domains`,
+  `profile_claim_mappings_json`, user
   provisioning and group synchronization settings, OIDC endpoints and
   credentials, SAML IdP/SP settings, `saml_name_id_format`,
   `extra_config_json`.
 - Computed: `has_client_secret`, `has_saml_sp_private_key`.
-- JSON: `extra_config_json`.
+- JSON: `profile_claim_mappings_json`, `extra_config_json`.
 - Sensitive: `client_secret`, `saml_sp_private_key`.
 - Import: numeric SSO provider ID. Secrets are not returned by the API.
 
@@ -112,17 +113,18 @@ Incoming alert route.
 
 - Required: `team_id`, `name`, `source`.
 - Optional: `rotation_id`, `service_id`, `escalation_policy_id`,
-  `channel_ids`, `notification_channel_mode`, `matchers_json`,
+  `channel_ids`, `notification_channel_mode`, `matcher_preset_id`, `matchers_json`,
   `integration_config_json`, `group_by`, `enabled`.
 - Computed: `intake_token`, `intake_token_prefix`, `has_intake_token`,
   `service_name`, `service_slug`, `escalation_mode`.
 - JSON: `matchers_json`, `integration_config_json`.
-- Sensitive: `intake_token`.
+- Sensitive: `intake_token`, `integration_config_json`.
 - Import: numeric route ID. Intake token is only returned on create or
   regeneration.
 - When `escalation_policy_id` is configured, the provider sends policy
   escalation mode to the API automatically.
-- IncidentRelay 2.0 adds `uptime_kuma` to the supported `source` values.
+- IncidentRelay 2.3 supports `new_relic`, `nagios`, `azure_monitor`, and
+  `cloud_ru` in addition to the earlier route sources.
 
 ## Event Orchestration
 
@@ -229,8 +231,8 @@ Reusable service notification policy.
 Rule inside a service notification policy.
 
 - Required: `policy_id`, `name`.
-- Optional: `description`, `position`, `event_types`, `matchers_json`,
-  `channel_ids`, `continue_matching`, `enabled`.
+- Optional: `description`, `position`, `event_types`, `matcher_preset_id`,
+  `matchers_json`, `channel_ids`, `continue_matching`, `enabled`.
 - JSON: `matchers_json`.
 - Import: numeric rule ID. Keep `policy_id` in configuration before import.
 
@@ -299,7 +301,8 @@ Link attached to a service.
 Runbook attached to a service.
 
 - Required: `service_id`, `title`, `url`.
-- Optional: `description`, `severity`, `matchers_json`, `priority`, `enabled`.
+- Optional: `description`, `severity`, `matcher_preset_id`, `matchers_json`,
+  `priority`, `enabled`.
 - Computed: `service_name`, `service_slug`.
 - JSON: `matchers_json`.
 - Import: numeric runbook ID. Keep `service_id` in configuration before import.

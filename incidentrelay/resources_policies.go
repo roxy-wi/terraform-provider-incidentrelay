@@ -218,11 +218,12 @@ func resourceNotificationPolicyRule() *schema.Resource {
 		optIntDefault("position", 1, "Rule evaluation order."),
 		optStringSet("event_types", "Notification event types: notification, reminder, escalation."),
 		optJSONDefault("matchers_json", "matchers", "{}", "Alert matcher JSON."),
+		optInt("matcher_preset_id", "Optional matcher preset id."),
 		optIntSet("channel_ids", "Notification channel ids selected by this rule."),
 		optBoolDefault("continue_matching", false, "Continue evaluating following rules after this rule matches."),
 		optBoolDefault("enabled", true, "Whether the rule is enabled."),
 	}
-	return crudResource(resourceSpec{
+	resource := crudResource(resourceSpec{
 		Description:   "IncidentRelay notification policy rule.",
 		Fields:        fields,
 		CreatePath:    fieldCreatePath("/api/notification-policies/%d/rules", "policy_id"),
@@ -230,7 +231,9 @@ func resourceNotificationPolicyRule() *schema.Resource {
 		ReadListField: "rules",
 		UpdatePath:    fieldIDPath("/api/notification-policies/%d/rules/%s", "policy_id"),
 		DeletePath:    fieldIDPath("/api/notification-policies/%d/rules/%s", "policy_id"),
-		CreateFields:  []string{"name", "description", "position", "event_types", "matchers_json", "channel_ids", "continue_matching", "enabled"},
-		UpdateFields:  []string{"name", "description", "position", "event_types", "matchers_json", "channel_ids", "continue_matching", "enabled"},
+		CreateFields:  []string{"name", "description", "position", "event_types", "matchers_json", "matcher_preset_id", "channel_ids", "continue_matching", "enabled"},
+		UpdateFields:  []string{"name", "description", "position", "event_types", "matchers_json", "matcher_preset_id", "channel_ids", "continue_matching", "enabled"},
 	})
+	resource.Schema["matcher_preset_id"].ValidateFunc = validation.IntAtLeast(1)
+	return resource
 }

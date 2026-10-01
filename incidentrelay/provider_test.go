@@ -129,7 +129,9 @@ func TestJSONFieldValidationRejectsInvalidJSON(t *testing.T) {
 				}
 
 				validJSON := `{"ok":true}`
-				if fieldName == "rules_json" {
+				if fieldName == "profile_claim_mappings_json" {
+					validJSON = `{"slack_user_id":"slack_id"}`
+				} else if fieldName == "rules_json" {
 					validJSON = `[]`
 				}
 				if _, errors := validate(validJSON, fieldName); len(errors) > 0 {

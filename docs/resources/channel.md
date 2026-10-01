@@ -49,11 +49,36 @@ resource "incidentrelay_channel" "slack_socket" {
 For HTTP actions, set `connection_mode = "http"` and provide
 `signing_secret` instead of `app_token`.
 
-`config_json` is sensitive. IncidentRelay 1.2 returns placeholders instead of
-stored Slack secrets; the provider keeps the configured secret values during
-refresh to prevent a permanent diff. After importing an existing Slack channel,
-set its real secrets in configuration before applying changes because masked API
-responses cannot recover them.
+IncidentRelay 2.3 also supports Feishu/Lark custom bots:
+
+```hcl
+variable "lark_webhook_url" {
+  type      = string
+  sensitive = true
+}
+
+variable "lark_signing_secret" {
+  type      = string
+  sensitive = true
+}
+
+resource "incidentrelay_channel" "lark" {
+  team_id      = incidentrelay_team.platform.id
+  name         = "platform-lark"
+  channel_type = "lark"
+
+  config_json = jsonencode({
+    webhook_url    = var.lark_webhook_url
+    signing_secret = var.lark_signing_secret
+  })
+}
+```
+
+`config_json` is sensitive. IncidentRelay returns placeholders instead of
+stored channel secrets; the provider keeps configured values during refresh to
+prevent a permanent diff. After importing a channel, set its real secrets in
+configuration before applying changes because masked API responses cannot
+recover them.
 
 ## Import
 

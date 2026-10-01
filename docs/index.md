@@ -16,10 +16,10 @@ The provider communicates with the IncidentRelay HTTP API. Use token
 authentication for automation and username/password authentication for local
 development or bootstrap workflows.
 
-The current provider code is tested against IncidentRelay 2.0, including Event
-Orchestration, reusable orchestration webhooks, Uptime Kuma and Datadog routes,
-Slack Bot API channels using HTTP actions or Socket Mode, and SSO provider and
-group mapping administration.
+The current provider code is tested against IncidentRelay 2.3, including Event
+Orchestration, notification-policy filters, New Relic, Nagios, Azure Monitor,
+Cloud.ru, Uptime Kuma and Datadog routes, Slack and Feishu/Lark channels, and
+SSO provider, profile-claim, and group-mapping administration.
 
 ## Example Usage
 
@@ -28,7 +28,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.6"
+      version = "~> 0.7"
     }
   }
 }

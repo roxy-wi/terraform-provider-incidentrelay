@@ -38,9 +38,9 @@ export INCIDENTRELAY_TOKEN="..."
 terraform plan
 ```
 
-### IncidentRelay 2.0 token scopes
+### IncidentRelay 2.3 token scopes
 
-Personal API tokens in IncidentRelay 2.0 use granular read/write scopes. A
+Personal API tokens in IncidentRelay 2.3 use granular read/write scopes. A
 Terraform plan needs the matching `:read` scopes, and apply/destroy also need
 the matching `:write` scopes:
 
@@ -58,6 +58,7 @@ the matching `:write` scopes:
 | Heartbeats | `heartbeats:read`, `heartbeats:write` |
 | Event Orchestration and webhook actions | `orchestrations:read`, `orchestrations:write` |
 | SSO providers and mappings | `sso:read`, `sso:write` |
+| Incident priority data source | `incidents:read` |
 
 The legacy `resources:read` and `resources:write` aggregate scopes remain
 compatible with these configuration domains. Prefer the granular scopes for a

@@ -59,6 +59,30 @@ resource "incidentrelay_route" "uptime_kuma" {
 }
 ```
 
+IncidentRelay 2.1-2.3 add `new_relic`, `nagios`, `azure_monitor`, and
+`cloud_ru`. Cloud.ru Advanced SMN requires a topic URN:
+
+```hcl
+resource "incidentrelay_route" "cloud_ru" {
+  team_id = incidentrelay_team.platform.id
+  name    = "platform-cloud-ru"
+  source  = "cloud_ru"
+
+  matcher_preset_id = var.matcher_preset_id
+
+  integration_config_json = jsonencode({
+    cloud_ru = {
+      topic_urn = "urn:smn:ru-a:project-id:incidentrelay"
+    }
+  })
+}
+```
+
+The route-specific `webhook_path` returned by IncidentRelay is computed server
+state. The provider removes it from managed `integration_config_json` during
+refresh, so it does not create a permanent Terraform diff. The same
+normalization applies to AWS SNS and Sentry integration metadata.
+
 ## Import
 
 ```sh

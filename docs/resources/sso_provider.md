@@ -33,6 +33,12 @@ resource "incidentrelay_sso_provider" "corporate" {
     "corp.example.com",
   ]
 
+  profile_claim_mappings_json = jsonencode({
+    slack_user_id      = "slack_id"
+    telegram_user_id   = "telegram_id"
+    mattermost_user_id = "mattermost_id"
+  })
+
   auto_create_users                = true
   auto_link_by_email               = true
   require_verified_email           = true
@@ -106,6 +112,9 @@ resource "incidentrelay_sso_provider" "adfs" {
 - `groups_claim` (String) External groups claim. Defaults to `groups`.
 - `phone_claim` (String) Phone-number claim. Defaults to `mobile`.
 - `allowed_domains` (Set of String) Email domains allowed to use the provider.
+- `profile_claim_mappings_json` (String) JSON object mapping
+  `slack_user_id`, `telegram_user_id`, and `mattermost_user_id` to SSO claim
+  names. Mapped claims fill empty local profile fields.
 - `auto_create_users` (Boolean) Automatically create local users. Defaults to
   `false`.
 - `auto_link_by_email` (Boolean) Link an identity to an existing user by email.

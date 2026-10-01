@@ -2,7 +2,7 @@
 page_title: "incidentrelay_event_orchestration Resource - IncidentRelay"
 subcategory: "Event Orchestration"
 description: |-
-  Manages an IncidentRelay 2.0 Event Orchestration and its published rule version.
+  Manages an IncidentRelay Event Orchestration and its published rule version.
 ---
 
 # incidentrelay_event_orchestration
@@ -89,6 +89,13 @@ resource "incidentrelay_event_orchestration" "production" {
 The API validates condition operators and action payloads during publication.
 Terraform intentionally keeps the rule DSL in JSON so it follows the running
 IncidentRelay API without flattening the nested rule and action model.
+
+IncidentRelay 2.3 supports `set_trace_level` actions with
+`full`/`compact`/`disabled` and `set_alert_event_history` actions with
+`full`/`initial`/`disabled`. `set_trace_level` is limited to global
+orchestrations; alert event history can also be configured in service
+orchestrations. Both actions pass through `rules_json` without a provider
+schema migration.
 
 ## Import
 

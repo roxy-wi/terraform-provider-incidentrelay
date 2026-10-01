@@ -247,6 +247,247 @@ func TestChannelResourcePreservesIncidentRelay12MaskedSecrets(t *testing.T) {
 	}
 }
 
+func TestChannelResourcePreservesIncidentRelay23LarkMaskedSecrets(t *testing.T) {
+	configJSON := `{
+		"webhook_url": "https://open.feishu.cn/open-apis/bot/v2/hook/test",
+		"signing_secret": "lark-signing-secret"
+	}`
+	maskedResponse := func(name string) map[string]interface{} {
+		return map[string]interface{}{
+			"id":           203,
+			"team_id":      42,
+			"name":         name,
+			"channel_type": "lark",
+			"config": map[string]interface{}{
+				"webhook_url":    incidentRelaySecretPlaceholder,
+				"signing_secret": incidentRelaySecretPlaceholder,
+			},
+			"enabled": true,
+		}
+	}
+
+	name := "Lark"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/channels":
+			payload := decodeJSONBody(t, r)
+			config := payload["config"].(map[string]interface{})
+			if got, want := config["signing_secret"], "lark-signing-secret"; got != want {
+				t.Fatalf("create signing_secret = %v, want %v", got, want)
+			}
+			writeJSON(t, w, maskedResponse(name))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/channels/203":
+			writeJSON(t, w, maskedResponse(name))
+		case r.Method == http.MethodPut && r.URL.Path == "/api/channels/203":
+			payload := decodeJSONBody(t, r)
+			config := payload["config"].(map[string]interface{})
+			if got, want := config["webhook_url"], "https://open.feishu.cn/open-apis/bot/v2/hook/test"; got != want {
+				t.Fatalf("update webhook_url = %v, want %v", got, want)
+			}
+			name = payload["name"].(string)
+			writeJSON(t, w, maskedResponse(name))
+		case r.Method == http.MethodDelete && r.URL.Path == "/api/channels/203":
+			w.WriteHeader(http.StatusNoContent)
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := NewClient(ClientConfig{BaseURL: server.URL, Token: "token"})
+	if err != nil {
+		t.Fatalf("NewClient returned error: %v", err)
+	}
+	resource := resourceChannel()
+	data := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
+		"team_id": 42, "name": name, "channel_type": "lark", "config_json": configJSON, "enabled": true,
+	})
+	config := &Config{Client: client}
+
+	if diags := resource.CreateWithoutTimeout(context.Background(), data, config); diags.HasError() {
+		t.Fatalf("create diagnostics: %v", diags)
+	}
+	if got, want := data.Get("config_json"), normalizeJSONStringState(configJSON); got != want {
+		t.Fatalf("config_json after create = %v, want %v", got, want)
+	}
+	if err := data.Set("name", "Lark Operations"); err != nil {
+		t.Fatalf("set name: %v", err)
+	}
+	if diags := resource.UpdateWithoutTimeout(context.Background(), data, config); diags.HasError() {
+		t.Fatalf("update diagnostics: %v", diags)
+	}
+	if got, want := data.Get("config_json"), normalizeJSONStringState(configJSON); got != want {
+		t.Fatalf("config_json after update = %v, want %v", got, want)
+	}
+}
+
+func TestRouteResourceIncidentRelay23IntegrationConfigRoundTrip(t *testing.T) {
+	resource := resourceRoute()
+	if !resource.Schema["integration_config_json"].Sensitive {
+		t.Fatal("integration_config_json must be sensitive")
+	}
+	if !resource.Schema["matcher_preset_id"].Optional {
+		t.Fatal("matcher_preset_id must be optional")
+	}
+
+	allowedSources := []string{"new_relic", "nagios", "azure_monitor", "cloud_ru"}
+	for _, source := range allowedSources {
+		if _, errors := resource.Schema["source"].ValidateFunc(source, "source"); len(errors) != 0 {
+			t.Fatalf("source %q returned validation errors: %v", source, errors)
+		}
+	}
+
+	cloudData := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
+		"team_id":                 42,
+		"name":                    "Cloud.ru",
+		"source":                  "cloud_ru",
+		"integration_config_json": `{"cloud_ru":{"topic_urn":"urn:smn:ru-a:project:incidentrelay"}}`,
+	})
+	cloudResponse := map[string]interface{}{
+		"source": "cloud_ru",
+		"integration_config": map[string]interface{}{
+			"cloud_ru": map[string]interface{}{
+				"topic_urn":    "urn:smn:ru-a:project:incidentrelay",
+				"webhook_path": "/api/integrations/cloud-ru/42",
+			},
+		},
+	}
+	if err := routeResponseHook(cloudData, cloudResponse); err != nil {
+		t.Fatalf("cloud_ru response hook: %v", err)
+	}
+	wantCloud := map[string]interface{}{
+		"cloud_ru": map[string]interface{}{"topic_urn": "urn:smn:ru-a:project:incidentrelay"},
+	}
+	if got := cloudResponse["integration_config"]; !reflect.DeepEqual(got, wantCloud) {
+		t.Fatalf("cloud_ru managed config = %#v, want %#v", got, wantCloud)
+	}
+
+	sentryData := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
+		"team_id":                 42,
+		"name":                    "Sentry",
+		"source":                  "sentry",
+		"integration_config_json": `{"sentry":{"webhook_secret":"secret","base_url":"https://sentry.io"}}`,
+	})
+	sentryResponse := map[string]interface{}{
+		"source": "sentry",
+		"integration_config": map[string]interface{}{
+			"sentry": map[string]interface{}{
+				"has_webhook_secret": true,
+				"webhook_path":       "/api/integrations/sentry/42",
+				"base_url":           "https://sentry.io",
+				"organization_slug":  nil,
+			},
+		},
+	}
+	if err := routeResponseHook(sentryData, sentryResponse); err != nil {
+		t.Fatalf("sentry response hook: %v", err)
+	}
+	wantSentry := map[string]interface{}{
+		"sentry": map[string]interface{}{
+			"webhook_secret": "secret",
+			"base_url":       "https://sentry.io",
+		},
+	}
+	if got := sentryResponse["integration_config"]; !reflect.DeepEqual(got, wantSentry) {
+		t.Fatalf("sentry managed config = %#v, want %#v", got, wantSentry)
+	}
+}
+
+func TestIncidentRelay23MatcherPresetsForNotificationRulesAndRunbooks(t *testing.T) {
+	notificationState := map[string]interface{}{
+		"id": 601, "name": "Critical", "description": nil, "position": 1,
+		"event_types": []interface{}{"notification"}, "matchers": map[string]interface{}{},
+		"matcher_preset_id": 91, "channel_ids": []interface{}{12},
+		"continue_matching": false, "enabled": true,
+	}
+	runbookState := map[string]interface{}{
+		"id": 701, "service_id": 77, "service_name": "API", "service_slug": "api",
+		"title": "API incidents", "description": nil, "url": "https://runbooks.example.com/api",
+		"severity": nil, "matchers": map[string]interface{}{}, "matcher_preset_id": 93,
+		"priority": 100, "enabled": true,
+	}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/api/notification-policies/55/rules":
+			payload := decodeJSONBody(t, r)
+			if got, want := payload["matcher_preset_id"], float64(91); got != want {
+				t.Fatalf("notification rule create matcher_preset_id = %v, want %v", got, want)
+			}
+			writeJSON(t, w, notificationState)
+		case r.Method == http.MethodPut && r.URL.Path == "/api/notification-policies/55/rules/601":
+			payload := decodeJSONBody(t, r)
+			if got, want := payload["matcher_preset_id"], float64(92); got != want {
+				t.Fatalf("notification rule update matcher_preset_id = %v, want %v", got, want)
+			}
+			notificationState["matcher_preset_id"] = 92
+			writeJSON(t, w, notificationState)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/notification-policies/55":
+			writeJSON(t, w, map[string]interface{}{"rules": []interface{}{notificationState}})
+		case r.Method == http.MethodPost && r.URL.Path == "/api/services/77/runbooks":
+			payload := decodeJSONBody(t, r)
+			if got, want := payload["matcher_preset_id"], float64(93); got != want {
+				t.Fatalf("runbook create matcher_preset_id = %v, want %v", got, want)
+			}
+			writeJSON(t, w, runbookState)
+		case r.Method == http.MethodPut && r.URL.Path == "/api/services/runbooks/701":
+			payload := decodeJSONBody(t, r)
+			if got, want := payload["matcher_preset_id"], float64(94); got != want {
+				t.Fatalf("runbook update matcher_preset_id = %v, want %v", got, want)
+			}
+			runbookState["matcher_preset_id"] = 94
+			writeJSON(t, w, runbookState)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/services/runbooks":
+			writeJSON(t, w, []interface{}{runbookState})
+		default:
+			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	client, err := NewClient(ClientConfig{BaseURL: server.URL, Token: "token"})
+	if err != nil {
+		t.Fatalf("NewClient returned error: %v", err)
+	}
+	config := &Config{Client: client}
+
+	notificationResource := resourceNotificationPolicyRule()
+	if _, errors := notificationResource.Schema["matcher_preset_id"].ValidateFunc(0, "matcher_preset_id"); len(errors) == 0 {
+		t.Fatal("notification rule accepted matcher_preset_id=0")
+	}
+	notificationData := schema.TestResourceDataRaw(t, notificationResource.Schema, map[string]interface{}{
+		"policy_id": 55, "name": "Critical", "event_types": []interface{}{"notification"},
+		"matcher_preset_id": 91, "channel_ids": []interface{}{12},
+	})
+	if diags := notificationResource.CreateWithoutTimeout(context.Background(), notificationData, config); diags.HasError() {
+		t.Fatalf("notification rule create diagnostics: %v", diags)
+	}
+	if err := notificationData.Set("matcher_preset_id", 92); err != nil {
+		t.Fatalf("set notification matcher_preset_id: %v", err)
+	}
+	if diags := notificationResource.UpdateWithoutTimeout(context.Background(), notificationData, config); diags.HasError() {
+		t.Fatalf("notification rule update diagnostics: %v", diags)
+	}
+
+	runbookResource := resourceServiceRunbook()
+	if _, errors := runbookResource.Schema["matcher_preset_id"].ValidateFunc(0, "matcher_preset_id"); len(errors) == 0 {
+		t.Fatal("service runbook accepted matcher_preset_id=0")
+	}
+	runbookData := schema.TestResourceDataRaw(t, runbookResource.Schema, map[string]interface{}{
+		"service_id": 77, "title": "API incidents", "url": "https://runbooks.example.com/api",
+		"matcher_preset_id": 93,
+	})
+	if diags := runbookResource.CreateWithoutTimeout(context.Background(), runbookData, config); diags.HasError() {
+		t.Fatalf("runbook create diagnostics: %v", diags)
+	}
+	if err := runbookData.Set("matcher_preset_id", 94); err != nil {
+		t.Fatalf("set runbook matcher_preset_id: %v", err)
+	}
+	if diags := runbookResource.UpdateWithoutTimeout(context.Background(), runbookData, config); diags.HasError() {
+		t.Fatalf("runbook update diagnostics: %v", diags)
+	}
+}
+
 func TestReadListDatasourceFindsSingleMatch(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if got, want := r.Method, http.MethodGet; got != want {

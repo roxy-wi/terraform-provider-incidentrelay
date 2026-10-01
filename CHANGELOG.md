@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-01
+
+### IncidentRelay 2.3 compatibility
+
+- Test the provider acceptance suite against IncidentRelay 2.3.
+- Support Feishu/Lark notification channels while preserving all API-masked
+  channel secrets during refresh.
+- Support `new_relic`, `nagios`, `azure_monitor`, and `cloud_ru` alert routes,
+  including stable handling of API-computed integration webhook paths.
+- Add `matcher_preset_id` to `incidentrelay_route`,
+  `incidentrelay_notification_policy_rule`, and `incidentrelay_service_runbook`.
+- Add `profile_claim_mappings_json` to `incidentrelay_sso_provider` for mapping
+  SSO claims to Slack, Telegram, and Mattermost profile identifiers.
+- Document IncidentRelay 2.3 notification-policy filters, Event Orchestration
+  trace/history actions, and the `incidents:read` scope used by priority
+  lookups.
+
 ## 0.6.0 - 2026-08-20
 
 ### IncidentRelay 2.0 compatibility

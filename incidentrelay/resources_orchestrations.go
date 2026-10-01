@@ -36,7 +36,7 @@ func resourceEventOrchestration() *schema.Resource {
 	}
 
 	resource := &schema.Resource{
-		Description: "IncidentRelay 2.0 Event Orchestration. Terraform saves and publishes a new immutable version whenever rules_json changes.",
+		Description: "IncidentRelay Event Orchestration. Terraform saves and publishes a new immutable version whenever rules_json changes.",
 		CreateWithoutTimeout: func(ctx context.Context, d *schema.ResourceData, m interface{}) diag.Diagnostics {
 			return eventOrchestrationCreate(ctx, d, m, fields)
 		},

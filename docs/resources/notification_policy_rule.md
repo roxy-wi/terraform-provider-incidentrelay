@@ -14,11 +14,24 @@ resource "incidentrelay_notification_policy_rule" "critical" {
   event_types = ["notification", "reminder", "escalation"]
   channel_ids = [incidentrelay_channel.email.id]
 
+  matcher_preset_id = var.matcher_preset_id
+
   matchers_json = jsonencode({
-    severity = "critical"
+    severity = ["critical"]
+    priority = ["p1"]
+    source   = ["alertmanager"]
+    fields = {
+      "service.environment" = ["production"]
+    }
   })
 }
 ```
+
+IncidentRelay 2.3 evaluates notification-policy matchers through the common
+matcher engine. `matchers_json` can therefore filter by priority, severity,
+source, and service attributes supported by the running IncidentRelay API.
+`matcher_preset_id` can apply a reusable matcher preset alongside the local
+matchers.
 
 ## Import
 

@@ -1,6 +1,11 @@
 package incidentrelay
 
-import "github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+import (
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
+)
 
 const incidentRelaySecretPlaceholder = "__INCIDENTRELAY_SECRET__"
 
@@ -123,7 +128,7 @@ func resourceChannel() *schema.Resource {
 	fields := []fieldDef{
 		reqInt("team_id", "Owner team id."),
 		reqString("name", "Channel name."),
-		reqString("channel_type", "Channel type: email, slack, mattermost, telegram, discord, teams, or webhook."),
+		reqString("channel_type", "Channel type: email, slack, lark, mattermost, telegram, discord, teams, or webhook."),
 		reqSensitiveJSON("config_json", "config", "Sensitive channel-specific JSON configuration."),
 		optBoolDefault("enabled", true, "Whether the channel is enabled."),
 	}
@@ -141,14 +146,6 @@ func resourceChannel() *schema.Resource {
 }
 
 func channelResponseHook(d *schema.ResourceData, response map[string]interface{}) error {
-	channelType, _ := response["channel_type"].(string)
-	if channelType == "" {
-		channelType, _ = d.Get("channel_type").(string)
-	}
-	if channelType != "slack" {
-		return nil
-	}
-
 	remoteConfig, ok := response["config"]
 	if !ok {
 		return nil
@@ -168,17 +165,21 @@ func channelResponseHook(d *schema.ResourceData, response map[string]interface{}
 }
 
 func resourceRoute() *schema.Resource {
+	integrationConfig := optJSONDefault("integration_config_json", "integration_config", "{}", "Provider-specific route integration JSON.")
+	integrationConfig.Sensitive = true
+
 	fields := []fieldDef{
 		reqInt("team_id", "Owner team id."),
 		reqString("name", "Route name."),
-		reqString("source", "Incoming alert source: alertmanager, aws_sns, datadog, grafana, zabbix, webhook, sentry, librenms, rmon, uptime_kuma, or heartbeat."),
+		reqString("source", "Incoming alert source: alertmanager, aws_sns, azure_monitor, cloud_ru, datadog, grafana, new_relic, nagios, zabbix, webhook, sentry, librenms, rmon, uptime_kuma, or heartbeat."),
 		optInt("rotation_id", "Rotation id used by this route."),
 		optInt("service_id", "Default service id for this route."),
 		optInt("escalation_policy_id", "Escalation policy id used by this route."),
 		optIntSet("channel_ids", "Channel ids attached directly to this route."),
 		optStringDefault("notification_channel_mode", "route_only", "Notification channel mode."),
+		optInt("matcher_preset_id", "Optional matcher preset id."),
 		optJSONDefault("matchers_json", "matchers", "{}", "Route matcher JSON."),
-		optJSONDefault("integration_config_json", "integration_config", "{}", "Provider-specific route integration JSON."),
+		integrationConfig,
 		optStringSet("group_by", "Alert grouping label names."),
 		optBoolDefault("enabled", true, "Whether the route is enabled."),
 		computedSensitiveString("intake_token", "One-time route intake token returned on create/regeneration."),
@@ -188,17 +189,25 @@ func resourceRoute() *schema.Resource {
 		computedString("service_slug", "Default service slug."),
 		computedString("escalation_mode", "Escalation mode."),
 	}
-	return crudResource(resourceSpec{
+	resource := crudResource(resourceSpec{
 		Description:  "IncidentRelay alert route.",
 		Fields:       fields,
 		CreatePath:   createPath("/api/routes"),
 		ReadPath:     idPath("/api/routes/%s"),
 		UpdatePath:   idPath("/api/routes/%s"),
 		DeletePath:   idPath("/api/routes/%s"),
-		CreateFields: []string{"team_id", "name", "source", "rotation_id", "service_id", "escalation_policy_id", "channel_ids", "notification_channel_mode", "matchers_json", "integration_config_json", "group_by", "enabled"},
-		UpdateFields: []string{"team_id", "name", "source", "rotation_id", "service_id", "escalation_policy_id", "channel_ids", "notification_channel_mode", "matchers_json", "integration_config_json", "group_by", "enabled"},
+		CreateFields: []string{"team_id", "name", "source", "rotation_id", "service_id", "escalation_policy_id", "channel_ids", "notification_channel_mode", "matcher_preset_id", "matchers_json", "integration_config_json", "group_by", "enabled"},
+		UpdateFields: []string{"team_id", "name", "source", "rotation_id", "service_id", "escalation_policy_id", "channel_ids", "notification_channel_mode", "matcher_preset_id", "matchers_json", "integration_config_json", "group_by", "enabled"},
 		PayloadHook:  routePayloadHook,
+		ResponseHook: routeResponseHook,
 	})
+	resource.Schema["source"].ValidateFunc = validation.StringInSlice([]string{
+		"alertmanager", "aws_sns", "azure_monitor", "cloud_ru", "datadog", "grafana",
+		"new_relic", "nagios", "zabbix", "webhook", "sentry", "librenms", "rmon",
+		"uptime_kuma", "heartbeat",
+	}, false)
+	resource.Schema["matcher_preset_id"].ValidateFunc = validation.IntAtLeast(1)
+	return resource
 }
 
 func routePayloadHook(_ *schema.ResourceData, payload map[string]interface{}) {
@@ -207,6 +216,60 @@ func routePayloadHook(_ *schema.ResourceData, payload map[string]interface{}) {
 	} else {
 		payload["escalation_mode"] = "rotation"
 	}
+}
+
+func routeResponseHook(d *schema.ResourceData, response map[string]interface{}) error {
+	remoteConfig, ok := response["integration_config"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	currentConfig := map[string]interface{}{}
+	if raw, _ := d.Get("integration_config_json").(string); raw != "" {
+		parsed, err := jsonStringToValue(raw)
+		if err != nil {
+			return fmt.Errorf("parse integration_config_json: %w", err)
+		}
+		if parsedMap, ok := parsed.(map[string]interface{}); ok {
+			currentConfig = parsedMap
+		}
+	}
+
+	source, _ := response["source"].(string)
+	if source == "" {
+		source, _ = d.Get("source").(string)
+	}
+
+	response["integration_config"] = managedRouteIntegrationConfig(source, currentConfig, remoteConfig)
+	return nil
+}
+
+func managedRouteIntegrationConfig(source string, current, remote map[string]interface{}) map[string]interface{} {
+	providerConfig, _ := remote[source].(map[string]interface{})
+	managed := make(map[string]interface{}, len(providerConfig))
+	for key, value := range providerConfig {
+		if key == "webhook_path" || key == "has_webhook_secret" {
+			continue
+		}
+		if value == nil {
+			continue
+		}
+		managed[key] = value
+	}
+
+	if source == "sentry" {
+		currentSentry, _ := current["sentry"].(map[string]interface{})
+		if secret, ok := currentSentry["webhook_secret"].(string); ok && secret != "" {
+			if configured, _ := providerConfig["has_webhook_secret"].(bool); configured {
+				managed["webhook_secret"] = secret
+			}
+		}
+	}
+
+	if len(managed) == 0 {
+		return map[string]interface{}{}
+	}
+	return map[string]interface{}{source: managed}
 }
 
 func resourceRotation() *schema.Resource {

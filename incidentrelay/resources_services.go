@@ -131,21 +131,24 @@ func resourceServiceRunbook() *schema.Resource {
 		reqString("url", "Runbook URL."),
 		optString("severity", "Optional matching severity."),
 		optJSONDefault("matchers_json", "matchers", "{}", "Runbook matcher JSON."),
+		optInt("matcher_preset_id", "Optional matcher preset id."),
 		optIntDefault("priority", 100, "Display priority."),
 		optBoolDefault("enabled", true, "Whether the runbook is enabled."),
 		computedString("service_name", "Service name."),
 		computedString("service_slug", "Service slug."),
 	}
-	return crudResource(resourceSpec{
+	resource := crudResource(resourceSpec{
 		Description:  "IncidentRelay service runbook.",
 		Fields:       fields,
 		CreatePath:   fieldCreatePath("/api/services/%d/runbooks", "service_id"),
 		ReadListPath: createPath("/api/services/runbooks"),
 		UpdatePath:   idPath("/api/services/runbooks/%s"),
 		DeletePath:   idPath("/api/services/runbooks/%s"),
-		CreateFields: []string{"title", "description", "url", "severity", "matchers_json", "priority", "enabled"},
-		UpdateFields: []string{"title", "description", "url", "severity", "matchers_json", "priority", "enabled"},
+		CreateFields: []string{"title", "description", "url", "severity", "matchers_json", "matcher_preset_id", "priority", "enabled"},
+		UpdateFields: []string{"title", "description", "url", "severity", "matchers_json", "matcher_preset_id", "priority", "enabled"},
 	})
+	resource.Schema["matcher_preset_id"].ValidateFunc = validation.IntAtLeast(1)
+	return resource
 }
 
 func resourceServiceDependency() *schema.Resource {

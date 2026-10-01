@@ -15,6 +15,8 @@ resource "incidentrelay_service_runbook" "api_critical" {
   severity   = "critical"
   priority   = 10
 
+  matcher_preset_id = var.matcher_preset_id
+
   matchers_json = jsonencode({
     labels = {
       service = "platform-api"
@@ -22,6 +24,9 @@ resource "incidentrelay_service_runbook" "api_critical" {
   })
 }
 ```
+
+`matcher_preset_id` applies a reusable IncidentRelay matcher preset. Local
+`matchers_json` can be used at the same time.
 
 ## Import
 

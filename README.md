@@ -17,13 +17,18 @@ Bearer tokens and username/password login.
 
 ## IncidentRelay Compatibility
 
-The current provider code is tested against IncidentRelay 2.0. It manages Event
-Orchestration definitions and reusable webhook actions, lifecycle-aware
-silences and maintenance windows, and the Uptime Kuma route source. It also
-supports Datadog routes, Slack Bot API channels over HTTP actions or Socket
-Mode, SSO providers and group mappings, and incident priority policies. The
-provider preserves API-masked Slack, SSO, and orchestration webhook secrets
-during refresh so masking does not cause perpetual Terraform drift.
+The current provider code is tested against IncidentRelay 2.3. It supports the
+2.3 alert-source set, including New Relic, Nagios, Azure Monitor, Cloud.ru,
+Uptime Kuma, and Datadog; Slack and Feishu/Lark channels; SSO profile-claim
+mapping; notification-policy filters; and the current Event Orchestration JSON
+DSL. The provider preserves API-masked channel, SSO, route, and orchestration
+webhook secrets during refresh so masking does not cause perpetual Terraform
+drift.
+
+Operational Incidents and AlertGroups are runtime records rather than desired
+infrastructure configuration, so the provider intentionally does not manage
+their lifecycle as Terraform resources. Incident priority definitions remain
+available through the `incidentrelay_incident_priority` data source.
 
 ## Quick Start
 
@@ -32,7 +37,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.6"
+      version = "~> 0.7"
     }
   }
 }
@@ -179,6 +184,7 @@ matchers_json = jsonencode({
 - [Heartbeat monitoring](examples/heartbeat/main.tf)
 - [IncidentRelay 1.2: Datadog and Slack Socket Mode](examples/incidentrelay-1.2/main.tf)
 - [IncidentRelay 2.0: Event Orchestration and Uptime Kuma](examples/incidentrelay-2.0/main.tf)
+- [IncidentRelay 2.3: Lark, Cloud.ru, SSO claims, and policy filters](examples/incidentrelay-2.3/main.tf)
 - [OIDC SSO and group mapping](examples/sso/main.tf)
 - [Data source lookups](examples/data-sources/main.tf)
 - [Terraform import blocks](examples/imports/main.tf)
@@ -202,7 +208,7 @@ make install-local
 This installs the provider under:
 
 ```text
-~/.terraform.d/plugins/registry.terraform.io/roxy-wi/incidentrelay/0.6.0/<os>_<arch>/
+~/.terraform.d/plugins/registry.terraform.io/roxy-wi/incidentrelay/0.7.0/<os>_<arch>/
 ```
 
 ## Example
@@ -253,8 +259,8 @@ Add the corresponding ASCII-armored public key in Terraform Registry settings fo
 the `roxy-wi` namespace. Then create and push a semver tag:
 
 ```sh
-git tag v0.6.0
-git push origin v0.6.0
+git tag v0.7.0
+git push origin v0.7.0
 ```
 
 After the GitHub release is published, use Terraform Registry's `Publish >

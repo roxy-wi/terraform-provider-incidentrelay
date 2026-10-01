@@ -2,7 +2,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.6"
+      version = "~> 0.7"
     }
   }
 }
@@ -48,6 +48,12 @@ resource "incidentrelay_sso_provider" "corporate" {
   oidc_scope        = "openid email profile groups"
 
   allowed_domains = ["example.com"]
+
+  profile_claim_mappings_json = jsonencode({
+    slack_user_id      = "slack_id"
+    telegram_user_id   = "telegram_id"
+    mattermost_user_id = "mattermost_id"
+  })
 
   auto_create_users                = true
   auto_link_by_email               = true

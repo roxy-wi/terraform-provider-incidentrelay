@@ -17,6 +17,8 @@ configuration and adapt.
   refresh compatibility.
 - `incidentrelay-2.0`: Event Orchestration, reusable webhook actions, and an
   Uptime Kuma route.
+- `incidentrelay-2.3`: Feishu/Lark, Cloud.ru, SSO profile-claim mappings,
+  route matcher presets, and notification-policy filters.
 - `sso`: OIDC provider configuration and external group mapping.
 - `data-sources`: looking up existing groups, teams, users, notification
   channels, services, rotations, incident priorities, escalation and
