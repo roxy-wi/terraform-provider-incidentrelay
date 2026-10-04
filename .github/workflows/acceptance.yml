@@ -102,7 +102,9 @@ jobs:
 
       - name: Create admin user
         run: |
-          docker exec incidentrelay-acc \
+          docker exec \
+            -e INCIDENTRELAY_CONFIG_FILE=/var/lib/incidentrelay/incidentrelay.conf \
+            incidentrelay-acc \
             python manage.py create-admin \
               --username "$INCIDENTRELAY_USERNAME" \
               --password "$INCIDENTRELAY_PASSWORD" \
