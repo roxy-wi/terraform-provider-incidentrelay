@@ -1376,7 +1376,7 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 		t.Fatal("trace_id is empty")
 	}
 
-	alertGroup := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/%d", groupID))
+	alertGroup := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alert-groups/%d", groupID))
 	testAccRequireAPIIntField(t, alertGroup, "team_id", teamID)
 	testAccRequireAPIIntField(t, alertGroup, "route_id", routeID)
 	testAccRequireAPIIntField(t, alertGroup, "rotation_id", rotationID)
@@ -1387,7 +1387,7 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 	testAccRequireAPIStringField(t, alertGroup, "title", "Terraform ingestion smoke")
 	testAccRequireAPINestedStringField(t, alertGroup, "labels", "alertname", alertName)
 
-	trace := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/explain/%s", traceID))
+	trace := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alert-groups/explain/%s", traceID))
 	testAccRequireAPIStringField(t, trace, "trace_id", traceID)
 	testAccRequireAPIStringField(t, trace, "status", "completed")
 	testAccRequireAPIStringField(t, trace, "outcome", "created")
@@ -1435,7 +1435,7 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 		t.Fatal("resolved trace_id is empty")
 	}
 
-	resolvedAlertGroup := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/%d", groupID))
+	resolvedAlertGroup := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alert-groups/%d", groupID))
 	testAccRequireAPIIntField(t, resolvedAlertGroup, "team_id", teamID)
 	testAccRequireAPIIntField(t, resolvedAlertGroup, "route_id", routeID)
 	testAccRequireAPIIntField(t, resolvedAlertGroup, "rotation_id", rotationID)
@@ -1460,7 +1460,7 @@ func TestAccIncidentRelayAlertIngestionSmoke(t *testing.T) {
 	testAccRequireAPIIntField(t, childAlert, "id", alertID)
 	testAccRequireAPIStringField(t, childAlert, "status", "resolved")
 
-	resolvedTrace := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alerts/explain/%s", resolvedTraceID))
+	resolvedTrace := testAccReadAPIObject(t, ctx, config, fmt.Sprintf("/api/alert-groups/explain/%s", resolvedTraceID))
 	testAccRequireAPIStringField(t, resolvedTrace, "trace_id", resolvedTraceID)
 	testAccRequireAPIStringField(t, resolvedTrace, "status", "completed")
 	testAccRequireAPIStringField(t, resolvedTrace, "outcome", "updated")
