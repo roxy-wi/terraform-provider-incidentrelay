@@ -16,6 +16,39 @@ resource "incidentrelay_channel" "email" {
 }
 ```
 
+## Email recipients (IncidentRelay 2.4+)
+
+An empty `config_json` retains the legacy behavior: send to the assigned user's
+profile email. An explicit `recipient_mode = "assignee"` means the same thing.
+IR 2.4 also accepts `fallback` (use the configured address if the assignee has no
+email) and `fixed` (always use the configured address):
+
+```hcl
+resource "incidentrelay_channel" "email_fallback" {
+  team_id      = incidentrelay_team.platform.id
+  name         = "platform-email-fallback"
+  channel_type = "email"
+  config_json = jsonencode({
+    recipient_mode  = "fallback"
+    recipient_email = "oncall@example.com"
+  })
+}
+```
+
+Use exactly one mailbox in `recipient_email`, without a display name or address
+list. It is required for `fallback` and `fixed`, and ignored/removed by the API
+in `assignee` mode. Set the mode to `assignee` or return to `{}` to switch back.
+SMTP transport remains configured on the IncidentRelay server. The UI/API test
+action always sends to the current user's profile email, regardless of mode.
+
+The provider treats API-normalized email addresses and the omitted/explicit
+`assignee` default as equivalent during refresh and planning. Other changes,
+including a different recipient, mode, template or severity filter, remain
+visible. Ordinary mailbox local-part case is preserved; the API lowercases
+RFC 2142 role mailbox names such as `support` and `postmaster`.
+
+## Slack
+
 IncidentRelay 1.2 supports Slack Bot API actions over HTTP or Socket Mode. The
 Socket Mode configuration is useful when IncidentRelay cannot accept inbound
 connections from Slack:

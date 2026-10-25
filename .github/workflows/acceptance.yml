@@ -24,11 +24,22 @@ permissions:
 jobs:
   acceptance:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: "2.3"
+            image: ghcr.io/roxy-wi/incidentrelay:2.3
+            ref: v2.3.0
+          - version: "2.4"
+            # Build the final release tag for reproducible compatibility tests.
+            image: ""
+            ref: v2.4.0
     env:
-      INCIDENTRELAY_REMOTE_IMAGE: ghcr.io/roxy-wi/incidentrelay:2.3
-      INCIDENTRELAY_IMAGE: incidentrelay-acc:2.3
-      INCIDENTRELAY_SOURCE_REF: v2.3.0
-      INCIDENTRELAY_EXPECTED_VERSION: "2.3"
+      INCIDENTRELAY_REMOTE_IMAGE: ${{ matrix.image }}
+      INCIDENTRELAY_IMAGE: incidentrelay-acc:${{ matrix.version }}
+      INCIDENTRELAY_SOURCE_REF: ${{ matrix.ref }}
+      INCIDENTRELAY_EXPECTED_VERSION: ${{ matrix.version }}
       INCIDENTRELAY_BASE_URL: http://127.0.0.1:8080
       INCIDENTRELAY_USERNAME: admin
       INCIDENTRELAY_PASSWORD: change-me-123
@@ -51,24 +62,26 @@ jobs:
         run: |
           set -euo pipefail
 
-          echo "Trying anonymous pull of $INCIDENTRELAY_REMOTE_IMAGE"
-          if docker pull "$INCIDENTRELAY_REMOTE_IMAGE"; then
-            docker tag "$INCIDENTRELAY_REMOTE_IMAGE" "$INCIDENTRELAY_IMAGE"
-            exit 0
-          fi
-
-          echo "Anonymous pull failed; retrying after GHCR login"
-          if printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin; then
+          if [ -n "$INCIDENTRELAY_REMOTE_IMAGE" ]; then
+            echo "Trying anonymous pull of $INCIDENTRELAY_REMOTE_IMAGE"
             if docker pull "$INCIDENTRELAY_REMOTE_IMAGE"; then
               docker tag "$INCIDENTRELAY_REMOTE_IMAGE" "$INCIDENTRELAY_IMAGE"
               exit 0
             fi
+            echo "Anonymous pull failed; retrying after GHCR login"
+            if printf '%s' "$GHCR_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin; then
+              if docker pull "$INCIDENTRELAY_REMOTE_IMAGE"; then
+                docker tag "$INCIDENTRELAY_REMOTE_IMAGE" "$INCIDENTRELAY_IMAGE"
+                exit 0
+              fi
+            fi
           fi
 
-          echo "GHCR pull failed; building IncidentRelay image locally"
-          git clone --depth 1 --branch "$INCIDENTRELAY_SOURCE_REF" \
-            https://github.com/roxy-wi/IncidentRelay.git \
-            .incidentrelay-source
+          echo "Building IncidentRelay from $INCIDENTRELAY_SOURCE_REF"
+          git init .incidentrelay-source
+          git -C .incidentrelay-source remote add origin https://github.com/roxy-wi/IncidentRelay.git
+          git -C .incidentrelay-source fetch --depth 1 origin "$INCIDENTRELAY_SOURCE_REF"
+          git -C .incidentrelay-source checkout --detach FETCH_HEAD
 
           docker build \
             -t "$INCIDENTRELAY_IMAGE" \

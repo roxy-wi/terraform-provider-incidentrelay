@@ -132,7 +132,7 @@ func resourceChannel() *schema.Resource {
 		reqSensitiveJSON("config_json", "config", "Sensitive channel-specific JSON configuration."),
 		optBoolDefault("enabled", true, "Whether the channel is enabled."),
 	}
-	return crudResource(resourceSpec{
+	resource := crudResource(resourceSpec{
 		Description:  "IncidentRelay route-attached outbound notification channel.",
 		Fields:       fields,
 		CreatePath:   createPath("/api/channels"),
@@ -143,6 +143,9 @@ func resourceChannel() *schema.Resource {
 		UpdateFields: []string{"team_id", "name", "channel_type", "config_json", "enabled"},
 		ResponseHook: channelResponseHook,
 	})
+	resource.Schema["config_json"].DiffSuppressFunc = suppressEquivalentEmailConfig
+	resource.Schema["config_json"].DiffSuppressOnRefresh = true
+	return resource
 }
 
 func channelResponseHook(d *schema.ResourceData, response map[string]interface{}) error {
@@ -171,7 +174,7 @@ func resourceRoute() *schema.Resource {
 	fields := []fieldDef{
 		reqInt("team_id", "Owner team id."),
 		reqString("name", "Route name."),
-		reqString("source", "Incoming alert source: alertmanager, aws_sns, azure_monitor, cloud_ru, datadog, grafana, new_relic, nagios, zabbix, webhook, sentry, librenms, rmon, uptime_kuma, or heartbeat."),
+		reqString("source", "Incoming alert source: alertmanager, aws_sns, azure_monitor, cloud_ru, datadog, grafana, kibana, opensearch, new_relic, nagios, zabbix, webhook, sentry, librenms, rmon, uptime_kuma, or heartbeat."),
 		optInt("rotation_id", "Rotation id used by this route."),
 		optInt("service_id", "Default service id for this route."),
 		optInt("escalation_policy_id", "Escalation policy id used by this route."),
@@ -203,6 +206,7 @@ func resourceRoute() *schema.Resource {
 	})
 	resource.Schema["source"].ValidateFunc = validation.StringInSlice([]string{
 		"alertmanager", "aws_sns", "azure_monitor", "cloud_ru", "datadog", "grafana",
+		"kibana", "opensearch",
 		"new_relic", "nagios", "zabbix", "webhook", "sentry", "librenms", "rmon",
 		"uptime_kuma", "heartbeat",
 	}, false)

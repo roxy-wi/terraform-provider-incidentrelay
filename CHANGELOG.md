@@ -1,6 +1,20 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 - 2026-10-25
+
+### IncidentRelay 2.4 compatibility
+
+- Accept `opensearch` and `kibana` as `incidentrelay_route` sources.
+- Compare email `config_json` using the API's recipient semantics: omitted and
+  explicit `assignee` are equivalent; normalized recipient addresses do not
+  cause perpetual drift. Real changes to modes, addresses, templates and other
+  fields remain visible. Existing channel secret preservation is unchanged.
+- Cover `set_grouping.reopen_window_seconds` publication and updates through
+  `rules_json`, without changing the Terraform state schema.
+- Add regression and live acceptance coverage for the new sources, email mode
+  transitions, imports, and idempotent Terraform plans.
+- Run acceptance CI against IR 2.3 and the IR 2.4.0 release.
+- Document the new configuration and add an IncidentRelay 2.4 example.
 
 ## 0.7.0 - 2026-10-01
 

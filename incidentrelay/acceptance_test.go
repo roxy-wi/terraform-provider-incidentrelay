@@ -1711,6 +1711,10 @@ output "service_id" {
 		strconv.Quote("CLI service "+suffix),
 		strconv.Quote("CLI public "+suffix),
 	)
+	supports24 := testAccSupports24(t, config)
+	if supports24 {
+		mainTF += testAcc24CLIConfig
+	}
 	if err := os.WriteFile(filepath.Join(workDir, "main.tf"), []byte(mainTF), 0o600); err != nil {
 		t.Fatalf("write Terraform config: %v", err)
 	}
@@ -1719,6 +1723,10 @@ output "service_id" {
 		"TF_CLI_CONFIG_FILE="+cliConfigPath,
 		"TF_IN_AUTOMATION=1",
 		"TF_INPUT=0",
+		// The disposable acceptance server uses SQLite. Serialize CLI writes
+		// to avoid read-to-write transaction upgrade conflicts in the API.
+		"TF_CLI_ARGS_apply=-parallelism=1",
+		"TF_CLI_ARGS_destroy=-parallelism=1",
 	)
 
 	t.Cleanup(func() {
@@ -1753,6 +1761,29 @@ output "service_id" {
 	plan := testAccRunCommandResult(workDir, terraformEnv, terraformPath, "plan", "-input=false", "-detailed-exitcode", "-no-color")
 	if plan.ExitCode != 0 {
 		t.Fatalf("terraform plan after apply returned exit code %d, want 0:\n%s", plan.ExitCode, plan.Output)
+	}
+	if supports24 {
+		for _, item := range []struct{ address, output string }{
+			{"incidentrelay_channel.email24", "email24_id"},
+			{`incidentrelay_route.search24["opensearch"]`, "opensearch24_id"},
+			{"incidentrelay_event_orchestration.reopen24", "reopen24_id"},
+		} {
+			id := strings.TrimSpace(testAccRunCommand(t, workDir, terraformEnv, terraformPath, "output", "-raw", item.output))
+			testAccRunCommand(t, workDir, terraformEnv, terraformPath, "state", "rm", item.address)
+			testAccRunCommand(t, workDir, terraformEnv, terraformPath, "import", "-input=false", "-no-color", item.address, id)
+		}
+		plan = testAccRunCommandResult(workDir, terraformEnv, terraformPath, "plan", "-input=false", "-detailed-exitcode", "-no-color")
+		if plan.ExitCode != 0 {
+			t.Fatalf("terraform plan after IR 2.4 imports returned %d:\n%s", plan.ExitCode, plan.Output)
+		}
+		for _, mode := range []string{"fallback", "assignee", "fixed"} {
+			variable := "-var=email_recipient_mode=" + mode
+			testAccRunCommand(t, workDir, terraformEnv, terraformPath, "apply", "-auto-approve", "-input=false", "-no-color", variable)
+			plan = testAccRunCommandResult(workDir, terraformEnv, terraformPath, "plan", "-input=false", "-detailed-exitcode", "-no-color", variable)
+			if plan.ExitCode != 0 {
+				t.Fatalf("terraform plan for email mode %s returned %d:\n%s", mode, plan.ExitCode, plan.Output)
+			}
+		}
 	}
 }
 

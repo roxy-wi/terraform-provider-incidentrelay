@@ -19,6 +19,8 @@ configuration and adapt.
   Uptime Kuma route.
 - `incidentrelay-2.3`: Feishu/Lark, Cloud.ru, SSO profile-claim mappings,
   route matcher presets, and notification-policy filters.
+- `incidentrelay-2.4`: OpenSearch/Kibana routes, email fallback recipients,
+  and AlertGroup reopen rules. Requires provider v0.8.0+ and IncidentRelay 2.4+.
 - `sso`: OIDC provider configuration and external group mapping.
 - `data-sources`: looking up existing groups, teams, users, notification
   channels, services, rotations, incident priorities, escalation and

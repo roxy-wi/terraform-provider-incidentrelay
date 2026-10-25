@@ -128,7 +128,7 @@ func TestEventOrchestrationResourcePublishesRulesAndManagesRuntime(t *testing.T)
 		t.Fatal("rules_json accepted a JSON object")
 	}
 
-	rulesJSON := `[{"name":"Critical production","enabled":true,"condition_tree":{"field":"event.severity","operator":"equals","value":"critical"},"actions":[{"type":"set_priority","value":"P1"}],"processing_mode":"continue","children":[]}]`
+	rulesJSON := `[{"name":"Critical production","enabled":true,"condition_tree":{"field":"event.severity","operator":"equals","value":"critical"},"actions":[{"type":"set_priority","value":"P1"},{"type":"set_grouping","reopen_window_seconds":300}],"processing_mode":"continue","children":[]}]`
 	data := schema.TestResourceDataRaw(t, resource.Schema, map[string]interface{}{
 		"group_id":               10,
 		"name":                   "Production routing",
@@ -155,7 +155,7 @@ func TestEventOrchestrationResourcePublishesRulesAndManagesRuntime(t *testing.T)
 		t.Fatalf("rules_json after create = %v, want %v", got, want)
 	}
 
-	updatedRulesJSON := `[{"name":"Send production to platform","condition_tree":{},"actions":[{"type":"set_team","team_id":42}],"processing_mode":"stop","children":[]}]`
+	updatedRulesJSON := `[{"name":"Send production to platform","condition_tree":{},"actions":[{"type":"set_team","team_id":42},{"type":"set_grouping","reopen_window_seconds":600}],"processing_mode":"stop","children":[]}]`
 	for field, value := range map[string]interface{}{
 		"name":               "Production event routing",
 		"rules_json":         updatedRulesJSON,

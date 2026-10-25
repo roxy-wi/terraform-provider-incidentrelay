@@ -17,11 +17,15 @@ Bearer tokens and username/password login.
 
 ## IncidentRelay Compatibility
 
-The current provider code is tested against IncidentRelay 2.3. It supports the
-2.3 alert-source set, including New Relic, Nagios, Azure Monitor, Cloud.ru,
-Uptime Kuma, and Datadog; Slack and Feishu/Lark channels; SSO profile-claim
-mapping; notification-policy filters; and the current Event Orchestration JSON
-DSL. The provider preserves API-masked channel, SSO, route, and orchestration
+Provider v0.8.0 adds IncidentRelay 2.4 compatibility: OpenSearch
+and Kibana routes, email recipient modes, and AlertGroup reopen configuration
+through Event Orchestration. Acceptance CI targets both IR 2.3 and the final
+IR 2.4.0 release; see the [testing guide](docs/guides/testing-and-release.md).
+
+Existing support includes New Relic, Nagios, Azure Monitor, Cloud.ru, Uptime
+Kuma and Datadog routes; Slack and Feishu/Lark channels; SSO profile-claim
+mapping; notification-policy filters; and the Event Orchestration JSON DSL.
+The provider preserves API-masked channel, SSO, route, and orchestration
 webhook secrets during refresh so masking does not cause perpetual Terraform
 drift.
 
@@ -37,7 +41,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.7"
+      version = "~> 0.8"
     }
   }
 }
@@ -185,6 +189,7 @@ matchers_json = jsonencode({
 - [IncidentRelay 1.2: Datadog and Slack Socket Mode](examples/incidentrelay-1.2/main.tf)
 - [IncidentRelay 2.0: Event Orchestration and Uptime Kuma](examples/incidentrelay-2.0/main.tf)
 - [IncidentRelay 2.3: Lark, Cloud.ru, SSO claims, and policy filters](examples/incidentrelay-2.3/main.tf)
+- [IncidentRelay 2.4: search alerting, email recipients, and AlertGroup reopen](examples/incidentrelay-2.4/main.tf)
 - [OIDC SSO and group mapping](examples/sso/main.tf)
 - [Data source lookups](examples/data-sources/main.tf)
 - [Terraform import blocks](examples/imports/main.tf)
@@ -208,7 +213,7 @@ make install-local
 This installs the provider under:
 
 ```text
-~/.terraform.d/plugins/registry.terraform.io/roxy-wi/incidentrelay/0.7.0/<os>_<arch>/
+~/.terraform.d/plugins/registry.terraform.io/roxy-wi/incidentrelay/0.8.0/<os>_<arch>/
 ```
 
 ## Example
@@ -236,10 +241,10 @@ make test-acc
 ```
 
 GitHub Actions also includes an `Acceptance` workflow that starts
-IncidentRelay with Docker and runs this test layer. It tries to pull
-`ghcr.io/roxy-wi/incidentrelay:latest` anonymously first, then retries after a
-GHCR login with `GITHUB_TOKEN`. If GHCR is still unavailable, it builds the image
-from `roxy-wi/IncidentRelay@main` on the runner and uses that local image.
+IncidentRelay with Docker and runs this test layer against IR 2.3 and 2.4.
+The IR 2.3 job tries the `2.3` image, with source tag `v2.3.0` as a fallback;
+the IR 2.4 job builds source tag `v2.4.0`. See the
+[testing guide](docs/guides/testing-and-release.md) for details.
 
 ## Publishing to the Terraform Registry
 
@@ -259,8 +264,8 @@ Add the corresponding ASCII-armored public key in Terraform Registry settings fo
 the `roxy-wi` namespace. Then create and push a semver tag:
 
 ```sh
-git tag v0.7.0
-git push origin v0.7.0
+git tag v0.8.0
+git push origin v0.8.0
 ```
 
 After the GitHub release is published, use Terraform Registry's `Publish >

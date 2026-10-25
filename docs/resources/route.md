@@ -83,6 +83,32 @@ state. The provider removes it from managed `integration_config_json` during
 refresh, so it does not create a permanent Terraform diff. The same
 normalization applies to AWS SNS and Sentry integration metadata.
 
+## OpenSearch and Kibana (IncidentRelay 2.4+)
+
+```hcl
+resource "incidentrelay_route" "opensearch" {
+  team_id = incidentrelay_team.platform.id
+  name    = "platform-opensearch"
+  source  = "opensearch"
+  group_by = [
+    "opensearch_monitor_id", "opensearch_trigger_id", "opensearch_bucket_key"
+  ]
+}
+
+resource "incidentrelay_route" "kibana" {
+  team_id  = incidentrelay_team.platform.id
+  name     = "platform-kibana"
+  source   = "kibana"
+  group_by = ["kibana_rule_id", "kibana_alert_id"]
+}
+```
+
+Send events to `POST /api/integrations/opensearch` or
+`POST /api/integrations/kibana` with the corresponding route's `intake_token`
+as a Bearer token. Neither source needs extra `integration_config_json` fields.
+The provider manages the IncidentRelay route; configure the sending connector
+in OpenSearch or Kibana separately.
+
 ## Import
 
 ```sh

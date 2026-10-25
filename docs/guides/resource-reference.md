@@ -106,6 +106,8 @@ Outbound notification channel.
 - JSON: `config_json`.
 - Sensitive: `config_json`.
 - Import: numeric channel ID.
+- IR 2.4 email recipient modes (`assignee`, `fallback`, `fixed`) are configured
+  inside `config_json`; see the [channel guide](../resources/channel.md).
 
 ### `incidentrelay_route`
 
@@ -125,6 +127,7 @@ Incoming alert route.
   escalation mode to the API automatically.
 - IncidentRelay 2.3 supports `new_relic`, `nagios`, `azure_monitor`, and
   `cloud_ru` in addition to the earlier route sources.
+- IncidentRelay 2.4 adds `opensearch` and `kibana`.
 
 ## Event Orchestration
 

@@ -97,6 +97,31 @@ orchestrations; alert event history can also be configured in service
 orchestrations. Both actions pass through `rules_json` without a provider
 schema migration.
 
+## AlertGroup reopen (IncidentRelay 2.4+)
+
+Add a `set_grouping` action to a rule in `rules_json`:
+
+```hcl
+actions = [{
+  type                  = "set_grouping"
+  reopen_window_seconds = 300
+}]
+```
+
+This allows a new firing occurrence with the same source, group key, team,
+route and service to reuse a recently resolved AlertGroup. It creates a new
+child Alert; resolved child Alerts remain terminal. The value is an integer
+from 0 to 86400 seconds; omitted or `0` disables reopen. This is independent of
+the older `window_seconds` grouping/deduplication setting.
+
+The orchestration must be published with `mode = "active"` and
+`compatibility_mode = "hybrid"` or `"orchestration"`. Shadow or legacy mode
+does not enable reopening. Terraform publishes the rules and updates them as
+usual; it does not manage individual runtime AlertGroups or Incidents.
+
+Delayed recovery notifications are configured separately on the IR server via
+`[alerts] recovery_notification_delay_seconds`, not through this resource.
+
 ## Import
 
 ```sh

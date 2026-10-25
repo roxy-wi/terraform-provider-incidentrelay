@@ -16,10 +16,11 @@ The provider communicates with the IncidentRelay HTTP API. Use token
 authentication for automation and username/password authentication for local
 development or bootstrap workflows.
 
-The current provider code is tested against IncidentRelay 2.3, including Event
-Orchestration, notification-policy filters, New Relic, Nagios, Azure Monitor,
-Cloud.ru, Uptime Kuma and Datadog routes, Slack and Feishu/Lark channels, and
-SSO provider, profile-claim, and group-mapping administration.
+Provider v0.8.0 adds IR 2.4 OpenSearch/Kibana routes, email
+recipient modes, and Event Orchestration AlertGroup reopen configuration.
+Acceptance CI covers IR 2.3 and the final IR 2.4.0 release.
+Earlier route sources, notification-policy filters,
+Slack/Feishu/Lark channels, and SSO configuration remain supported.
 
 ## Example Usage
 
@@ -28,7 +29,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.7"
+      version = "~> 0.8"
     }
   }
 }
