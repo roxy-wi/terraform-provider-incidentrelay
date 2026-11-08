@@ -17,10 +17,16 @@ Bearer tokens and username/password login.
 
 ## IncidentRelay Compatibility
 
+Provider v0.9.0 adds IR 2.5 [Change Integrations](docs/resources/change_integration.md),
+[sources](docs/resources/change_source.md), [grants](docs/resources/change_grant.md),
+and Service correlation settings. On builds that expose the corresponding APIs,
+it also supports Google Cloud Monitoring routes and installation-wide
+[system settings](docs/resources/system_settings.md). See the [IR 2.5 example](examples/incidentrelay-2.5/main.tf).
+
 Provider v0.8.0 adds IncidentRelay 2.4 compatibility: OpenSearch
 and Kibana routes, email recipient modes, and AlertGroup reopen configuration
-through Event Orchestration. Acceptance CI targets both IR 2.3 and the final
-IR 2.4.0 release; see the [testing guide](docs/guides/testing-and-release.md).
+through Event Orchestration. See the [testing guide](docs/guides/testing-and-release.md)
+for the IR versions covered by acceptance CI.
 
 Existing support includes New Relic, Nagios, Azure Monitor, Cloud.ru, Uptime
 Kuma and Datadog routes; Slack and Feishu/Lark channels; SSO profile-claim
@@ -131,12 +137,17 @@ IncidentRelay instance with a self-signed certificate.
 - `incidentrelay_maintenance_window`
 - `incidentrelay_heartbeat`
 - `incidentrelay_event_orchestration`
+- `incidentrelay_change_integration`
+- `incidentrelay_change_source`
+- `incidentrelay_change_grant`
+- `incidentrelay_system_settings`
 - `incidentrelay_orchestration_webhook_action`
 - `incidentrelay_business_service`
 - `incidentrelay_business_service_component`
 
 ## Supported Data Sources
 
+- `incidentrelay_system_settings`
 - `incidentrelay_version`
 - `incidentrelay_group`
 - `incidentrelay_team`
@@ -241,9 +252,9 @@ make test-acc
 ```
 
 GitHub Actions also includes an `Acceptance` workflow that starts
-IncidentRelay with Docker and runs this test layer against IR 2.3 and 2.4.
+IncidentRelay with Docker and runs this test layer against IR 2.3, 2.4 and 2.5.
 The IR 2.3 job tries the `2.3` image, with source tag `v2.3.0` as a fallback;
-the IR 2.4 job builds source tag `v2.4.0`. See the
+the other jobs build source tags `v2.4.0` and `v2.5.0`. See the
 [testing guide](docs/guides/testing-and-release.md) for details.
 
 ## Publishing to the Terraform Registry
@@ -264,8 +275,8 @@ Add the corresponding ASCII-armored public key in Terraform Registry settings fo
 the `roxy-wi` namespace. Then create and push a semver tag:
 
 ```sh
-git tag v0.8.0
-git push origin v0.8.0
+git tag v0.9.0
+git push origin v0.9.0
 ```
 
 After the GitHub release is published, use Terraform Registry's `Publish >

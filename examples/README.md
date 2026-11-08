@@ -21,6 +21,7 @@ configuration and adapt.
   route matcher presets, and notification-policy filters.
 - `incidentrelay-2.4`: OpenSearch/Kibana routes, email fallback recipients,
   and AlertGroup reopen rules. Requires provider v0.8.0+ and IncidentRelay 2.4+.
+- [incidentrelay-2.5](incidentrelay-2.5/main.tf): Service correlation, a Google Cloud Monitoring route and Change Integration, source and grant. Requires provider v0.9.0+ and IncidentRelay 2.5.0+.
 - `sso`: OIDC provider configuration and external group mapping.
 - `data-sources`: looking up existing groups, teams, users, notification
   channels, services, rotations, incident priorities, escalation and

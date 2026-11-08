@@ -7,12 +7,18 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/validation"
 )
 
 type fieldKind string
+
+func validTrimmedText(s string, min, max int) bool {
+	n := utf8.RuneCountInString(s)
+	return strings.TrimSpace(s) == s && n >= min && n <= max
+}
 
 const (
 	kindString    fieldKind = "string"

@@ -37,11 +37,17 @@ locally built provider binary through Terraform's development override
 mechanism. That test covers `terraform validate`, `import`, `apply`,
 idempotent `plan -detailed-exitcode`, and `destroy`.
 
-The acceptance matrix retains IR 2.3 coverage and adds IR 2.4:
+The acceptance matrix exercises three IR versions:
 
 - IR 2.3 first pulls `ghcr.io/roxy-wi/incidentrelay:2.3` anonymously, then retries
   with GHCR authentication and falls back to building source tag `v2.3.0`.
 - IR 2.4 builds the final source tag `v2.4.0`.
+- IR 2.5 builds the final source tag `v2.5.0`.
+  The CLI covers Change Integrations, source/grant import, moving and disabling
+  a grant, soft deletion, and explicit versus unmanaged Service correlation
+  settings. It also exercises the Google Cloud Monitoring route lifecycle
+  and the system settings resource and data source, including import, managed
+  drift, simultaneous UX edits to omitted fields, and destroy.
 
 The 2.4-specific tests skip on older servers. On IR 2.4+, they cover OpenSearch
 and Kibana routes; legacy, assignee, fallback and fixed email configurations;
@@ -66,7 +72,13 @@ export INCIDENTRELAY_EXPECTED_VERSION="2.4"
 make test-acc
 ```
 
-The release workflow runs on semver tags such as `v0.8.0`. It builds
+For the system settings lifecycle test, use a disposable IR 2.5 installation
+and set `INCIDENTRELAY_EXPECTED_VERSION=2.5` and
+`INCIDENTRELAY_ACC_SYSTEM_SETTINGS=1`. The test temporarily changes event
+intake and the future timestamp limit, then restores their original values.
+The acceptance workflow enables this flag for its disposable instances.
+
+The release workflow runs on semver tags such as `v0.9.0`. It builds
 Registry-compatible zip assets, attaches the Terraform Registry manifest,
 generates SHA256 checksums, and signs the checksum file with GPG.
 
@@ -74,7 +86,7 @@ generates SHA256 checksums, and signs the checksum file with GPG.
 
 1. Ensure CI is green on `main`.
 2. Update documentation and examples for new resources or fields.
-3. Create the next semver tag, for example `v0.8.0`.
+3. Create the next semver tag, for example `v0.9.0`.
 4. Push the tag.
 5. Verify GitHub Release assets:
    - platform zip files

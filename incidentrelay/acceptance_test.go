@@ -1711,7 +1711,7 @@ output "service_id" {
 		strconv.Quote("CLI service "+suffix),
 		strconv.Quote("CLI public "+suffix),
 	)
-	supports24 := testAccSupports24(t, config)
+	supports24 := testAccSupportsVersion(t, config, 2, 4)
 	if supports24 {
 		mainTF += testAcc24CLIConfig
 	}
@@ -1737,6 +1737,7 @@ output "service_id" {
 	})
 
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "validate", "-no-color")
+	testAccRunCommand(t, filepath.Join(repoRoot, "examples", "incidentrelay-2.5"), terraformEnv, terraformPath, "validate", "-no-color")
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "import", "-input=false", "-no-color", "incidentrelay_group.cli", groupData.Id())
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "apply", "-auto-approve", "-input=false", "-no-color")
 
@@ -1784,6 +1785,12 @@ output "service_id" {
 				t.Fatalf("terraform plan for email mode %s returned %d:\n%s", mode, plan.ExitCode, plan.Output)
 			}
 		}
+	}
+	if testAccSupportsVersion(t, config, 2, 5) {
+		testAccChangeCLI(t, config, workDir, terraformEnv, terraformPath)
+		t.Run("system_settings", func(t *testing.T) {
+			testAccSystemSettingsCLI(t, config, workDir, terraformEnv, terraformPath)
+		})
 	}
 }
 

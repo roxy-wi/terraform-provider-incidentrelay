@@ -146,13 +146,15 @@ func datasourceService() *schema.Resource {
 		computedString("notification_policy_name", "Assigned notification policy name."),
 		computedInt("priority_policy_id", "Assigned incident priority policy id."),
 		computedString("priority_policy_name", "Assigned incident priority policy name."),
+		computedBool("change_correlation_enabled", "Whether automatic Change correlation is enabled (IR 2.5+)."),
+		computedJSON("change_correlation_exclusions_json", "change_correlation_exclusions", "Service Change correlation exclusion rules (IR 2.5+)."),
 	}
 	return listDatasource(datasourceSpec{
 		Description:  "Look up an IncidentRelay service.",
 		Endpoint:     "/api/services?include_disabled=1",
 		Fields:       fields,
 		SearchFields: []string{"service_id", "team_id", "slug", "name"},
-		ReadFields:   []string{"team_id", "slug", "name", "description", "team_name", "team_slug", "group_id", "default_rotation_id", "default_rotation_name", "default_escalation_policy_id", "default_escalation_policy_name", "notification_policy_id", "notification_policy_name", "priority_policy_id", "priority_policy_name"},
+		ReadFields:   []string{"team_id", "slug", "name", "description", "team_name", "team_slug", "group_id", "default_rotation_id", "default_rotation_name", "default_escalation_policy_id", "default_escalation_policy_name", "notification_policy_id", "notification_policy_name", "priority_policy_id", "priority_policy_name", "change_correlation_enabled", "change_correlation_exclusions_json"},
 	})
 }
 

@@ -74,7 +74,7 @@ func TestEmailConfigDoesNotSuppressInvalidOrOtherChannelValues(t *testing.T) {
 
 func TestIncidentRelay24RouteSources(t *testing.T) {
 	validate := resourceRoute().Schema["source"].ValidateFunc
-	for _, source := range []string{"opensearch", "kibana", "alertmanager", "cloud_ru", "heartbeat"} {
+	for _, source := range []string{"opensearch", "kibana", "google_cloud_monitoring", "alertmanager", "cloud_ru", "heartbeat"} {
 		if _, errs := validate(source, "source"); len(errs) != 0 {
 			t.Fatalf("source %s: %v", source, errs)
 		}

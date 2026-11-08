@@ -60,6 +60,10 @@ func Provider() *schema.Provider {
 		},
 		ResourcesMap: map[string]*schema.Resource{
 			"incidentrelay_group":                        resourceGroup(),
+			"incidentrelay_change_integration":           changeResource(changeIntegration),
+			"incidentrelay_system_settings":              resourceSystemSettings(),
+			"incidentrelay_change_source":                changeResource(changeSource),
+			"incidentrelay_change_grant":                 changeResource(changeGrant),
 			"incidentrelay_admin_user":                   resourceAdminUser(),
 			"incidentrelay_group_membership":             resourceGroupMembership(),
 			"incidentrelay_sso_provider":                 resourceSSOProvider(),
@@ -93,6 +97,7 @@ func Provider() *schema.Provider {
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			"incidentrelay_version":             datasourceVersion(),
+			"incidentrelay_system_settings":     datasourceSystemSettings(),
 			"incidentrelay_group":               datasourceGroup(),
 			"incidentrelay_team":                datasourceTeam(),
 			"incidentrelay_user":                datasourceUser(),

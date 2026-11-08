@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 - 2026-11-08
+
+- Manage Change Integrations, source namespaces and scoped grants with revision-checked updates, import and deactivation on destroy.
+- Support opt-in Service correlation and exclusion rules. Existing configurations leave both settings under server control.
+- Accept `google_cloud_monitoring` routes on servers that provide the Google Cloud Monitoring webhook.
+- Read or manage the fourteen Change Intelligence settings from Administration → System settings with `incidentrelay_system_settings`. Terraform updates only configured fields.
+- Extend acceptance CI to the IR 2.5.0 release while retaining IR 2.3 and 2.4 coverage.
+
 ## 0.8.0 - 2026-10-25
 
 ### IncidentRelay 2.4 compatibility

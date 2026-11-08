@@ -16,9 +16,16 @@ The provider communicates with the IncidentRelay HTTP API. Use token
 authentication for automation and username/password authentication for local
 development or bootstrap workflows.
 
+Provider v0.9.0 adds IR 2.5 [Change Integrations](resources/change_integration.md),
+[sources](resources/change_source.md), [grants](resources/change_grant.md),
+[Service correlation rules](resources/service.md), [Google Cloud Monitoring routes](resources/route.md),
+and installation-wide [system settings](resources/system_settings.md) with a
+[read-only data source](data-sources/system_settings.md).
+These features require provider v0.9.0 or later.
+
 Provider v0.8.0 adds IR 2.4 OpenSearch/Kibana routes, email
 recipient modes, and Event Orchestration AlertGroup reopen configuration.
-Acceptance CI covers IR 2.3 and the final IR 2.4.0 release.
+Acceptance CI covers IR 2.3, 2.4 and 2.5.
 Earlier route sources, notification-policy filters,
 Slack/Feishu/Lark channels, and SSO configuration remain supported.
 

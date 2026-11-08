@@ -30,6 +30,10 @@ more filters.
 
 ## Attributes
 
+On IR 2.5+, `change_correlation_enabled` and
+`change_correlation_exclusions_json` report the Service's effective correlation
+settings. See [Service correlation rules](../resources/service.md#change-correlation).
+
 - `id` (String) Service ID.
 - `team_id` (Number) Owner team ID.
 - `slug` (String) Service slug.

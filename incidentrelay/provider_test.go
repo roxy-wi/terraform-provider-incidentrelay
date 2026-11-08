@@ -21,6 +21,9 @@ func TestProviderInternalValidate(t *testing.T) {
 	for _, name := range []string{
 		"incidentrelay_group",
 		"incidentrelay_admin_user",
+		"incidentrelay_change_integration",
+		"incidentrelay_change_source",
+		"incidentrelay_change_grant",
 		"incidentrelay_sso_provider",
 		"incidentrelay_sso_group_mapping",
 		"incidentrelay_team",
@@ -83,7 +86,7 @@ func TestCommonFieldLengthValidation(t *testing.T) {
 	checked := 0
 	for resourceName, resource := range Provider().ResourcesMap {
 		for fieldName, expectation := range expectations {
-			if resourceName == "incidentrelay_event_orchestration" || resourceName == "incidentrelay_orchestration_webhook_action" {
+			if resourceName == "incidentrelay_event_orchestration" || resourceName == "incidentrelay_orchestration_webhook_action" || resourceName == "incidentrelay_change_integration" {
 				continue
 			}
 			field, ok := resource.Schema[fieldName]

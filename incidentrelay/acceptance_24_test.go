@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func testAccSupports24(t *testing.T, config *Config) bool {
+func testAccSupportsVersion(t *testing.T, config *Config, wantMajor, wantMinor int) bool {
 	t.Helper()
 	version := testAccReadAPIObject(t, context.Background(), config, "/api/version")
 	parts := strings.Split(fmt.Sprint(version["service_version"]), ".")
@@ -23,12 +23,12 @@ func testAccSupports24(t *testing.T, config *Config) bool {
 	if err != nil {
 		t.Fatalf("parse service minor version: %v", err)
 	}
-	return major > 2 || (major == 2 && minor >= 4)
+	return major > wantMajor || (major == wantMajor && minor >= wantMinor)
 }
 
 func TestAccIncidentRelay24Configuration(t *testing.T) {
 	config := testAccProviderConfig(t)
-	if !testAccSupports24(t, config) {
+	if !testAccSupportsVersion(t, config, 2, 4) {
 		t.Skip("requires IncidentRelay 2.4+")
 	}
 	ctx := context.Background()

@@ -17,6 +17,8 @@ Most provider resources and data sources limit fields named exactly `name` or
 Orchestration follows its API limits: names up to 255 characters and
 descriptions up to 8192 characters.
 
+Change Integration names and Change source namespaces may contain up to 255 characters.
+
 ## Identity And Access
 
 ### `incidentrelay_group`
@@ -128,6 +130,19 @@ Incoming alert route.
 - IncidentRelay 2.3 supports `new_relic`, `nagios`, `azure_monitor`, and
   `cloud_ru` in addition to the earlier route sources.
 - IncidentRelay 2.4 adds `opensearch` and `kibana`.
+- Use `google_cloud_monitoring` with IR 2.5 builds that include the Google Cloud Monitoring webhook.
+
+## Change Intelligence (IR 2.5+)
+
+- [Change Integration](../resources/change_integration.md): integration identity, owning Group and initial source.
+- [Change source](../resources/change_source.md): producer namespace, owner Team and ordering mode.
+- [Change grant](../resources/change_grant.md): source capability scoped to a Team or Service.
+
+All three support import; destroying them deactivates the retained record.
+For opt-in correlation and exclusion rules, see [Service](../resources/service.md#change-correlation).
+
+Global administrators can also [manage selected installation-wide settings](../resources/system_settings.md)
+or [read current values](../data-sources/system_settings.md). The installation settings use import ID `1`.
 
 ## Event Orchestration
 

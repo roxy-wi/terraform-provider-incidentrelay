@@ -25,6 +25,25 @@ resource "incidentrelay_service" "api" {
 }
 ```
 
+## Change correlation
+
+For IR 2.5+, set the following arguments on the Service to opt its alert
+episodes into automatic Change suggestions:
+
+```hcl
+change_correlation_enabled         = true
+change_correlation_exclusions_json = jsonencode([
+  { source = "heartbeat" },
+  { labels = { environment = "test" } }
+])
+```
+
+The exclusions are a JSON array of up to 50 rules. Each rule needs a source
+or at least one string label; all clauses within one rule must match the same
+child alert. Omit either attribute to leave its current server value unmanaged.
+Use `false` to disable correlation and `jsonencode([])` to clear the rules.
+Existing configurations can still manage Services on pre-2.5 servers.
+
 ## Import
 
 ```sh

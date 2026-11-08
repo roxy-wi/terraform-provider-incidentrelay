@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -26,12 +27,15 @@ type ClientConfig struct {
 }
 
 type Client struct {
-	baseURL    string
-	token      string
-	username   string
-	password   string
-	userAgent  string
-	httpClient *http.Client
+	// Change admin writes share the parent's auth_revision. Serialize the short
+	// read-revision/write pair across resources using this provider instance.
+	changeWrite sync.Mutex
+	baseURL     string
+	token       string
+	username    string
+	password    string
+	userAgent   string
+	httpClient  *http.Client
 }
 
 func NewClient(config ClientConfig) (*Client, error) {

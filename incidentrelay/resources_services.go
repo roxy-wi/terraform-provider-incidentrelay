@@ -28,6 +28,8 @@ func resourceService() *schema.Resource {
 		optJSONDefault("labels_json", "labels", "{}", "Service labels JSON."),
 		optStringSet("tags", "Service tags."),
 		optJSONDefault("metadata_json", "metadata", "{}", "Service metadata JSON."),
+		{Name: "change_correlation_enabled", Kind: kindBool, Optional: true, Computed: true, Description: "Include alert episodes in automatic Change suggestions (IR 2.5+). Omit to preserve the server setting."},
+		{Name: "change_correlation_exclusions_json", APIName: "change_correlation_exclusions", Kind: kindJSON, Optional: true, Computed: true, Description: "JSON array of source/label exclusion rules (IR 2.5+). Omit to preserve; send [] to clear."},
 		optBoolDefault("enabled", true, "Whether the service is enabled."),
 		optBoolDefault("public", false, "Whether the service can be exposed publicly."),
 		optString("public_name", "Public service name."),
@@ -41,16 +43,26 @@ func resourceService() *schema.Resource {
 		computedString("priority_policy_name", "Incident priority policy name."),
 		computedString("default_escalation_policy_name", "Default escalation policy name."),
 	}
-	return crudResource(resourceSpec{
+	writeFields := []string{
+		"team_id", "slug", "name", "description", "service_type", "environment", "criticality", "tier",
+		"status", "status_source", "status_message", "default_rotation_id", "default_escalation_policy_id",
+		"notification_policy_id", "priority_policy_id", "labels_json", "tags", "metadata_json",
+		"change_correlation_enabled", "change_correlation_exclusions_json",
+		"enabled", "public", "public_name", "public_description", "public_order",
+	}
+	resource := crudResource(resourceSpec{
 		Description:  "IncidentRelay service catalog service.",
 		Fields:       fields,
 		CreatePath:   createPath("/api/services"),
 		ReadPath:     idPath("/api/services/%s"),
 		UpdatePath:   idPath("/api/services/%s"),
 		DeletePath:   idPath("/api/services/%s"),
-		CreateFields: []string{"team_id", "slug", "name", "description", "service_type", "environment", "criticality", "tier", "status", "status_source", "status_message", "default_rotation_id", "default_escalation_policy_id", "notification_policy_id", "priority_policy_id", "labels_json", "tags", "metadata_json", "enabled", "public", "public_name", "public_description", "public_order"},
-		UpdateFields: []string{"team_id", "slug", "name", "description", "service_type", "environment", "criticality", "tier", "status", "status_source", "status_message", "default_rotation_id", "default_escalation_policy_id", "notification_policy_id", "priority_policy_id", "labels_json", "tags", "metadata_json", "enabled", "public", "public_name", "public_description", "public_order"},
+		PayloadHook:  serviceCorrelationPayload,
+		CreateFields: writeFields,
+		UpdateFields: writeFields,
 	})
+	resource.Schema["change_correlation_exclusions_json"].ValidateFunc = validateCorrelationExclusions
+	return resource
 }
 
 func resourceServiceMatchRule() *schema.Resource {

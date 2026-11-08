@@ -109,6 +109,15 @@ as a Bearer token. Neither source needs extra `integration_config_json` fields.
 The provider manages the IncidentRelay route; configure the sending connector
 in OpenSearch or Kibana separately.
 
+## Google Cloud Monitoring
+
+For a server with the IR 2.5 Google Cloud Monitoring webhook, use
+`source = "google_cloud_monitoring"` and `group_by = ["gcp_project_id", "gcp_incident_id"]`.
+No additional `integration_config_json` is needed. Configure the sending Google
+webhook for `POST /api/integrations/google-cloud-monitoring`, using HTTPS and
+HTTP Basic with username `incidentrelay` and the route's intake token as the
+password. Enable closure notifications to resolve alerts.
+
 ## Import
 
 ```sh

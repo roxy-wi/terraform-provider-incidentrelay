@@ -93,6 +93,22 @@ It does not authenticate Terraform itself. The Terraform provider still needs
 an API token or a local IncidentRelay username and password with global
 administrator access to manage SSO providers and group mappings.
 
+## Change Integrations (IR 2.5)
+
+The `/api/admin/change-integrations` endpoints require a JWT for a global
+administrator or an authorized Group `user_admin`. Set the login username and
+password so the provider obtains a JWT, or supply a valid JWT as the provider
+token. Group administrators can manage only integrations owned by their active
+Groups. Personal API tokens (even wildcard) cannot administer Change Integrations;
+machine tokens with `changes:ingest` are for event ingestion only.
+
+## System settings (IR 2.5)
+
+Reading or updating `/api/admin/system-settings` requires a global administrator
+JWT. Configure the provider with that administrator's username and password,
+or pass a valid JWT as its token. This applies to both the Terraform resource
+and the data source.
+
 ## Local Development With Self-Signed TLS
 
 ```hcl
