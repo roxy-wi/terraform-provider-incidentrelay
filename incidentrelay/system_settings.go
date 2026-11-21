@@ -54,7 +54,7 @@ func systemSettingsSchema(writable bool) map[string]*schema.Schema {
 
 func resourceSystemSettings() *schema.Resource {
 	return &schema.Resource{
-		Description:   "Manage selected installation-wide Change Intelligence settings. Requires a global administrator JWT.",
+		Description:   "Manage installation-wide Change Intelligence settings. Requires a global administrator JWT or, on IR 2.5.1+, an unrestricted administrator personal API token with system-settings scopes.",
 		Schema:        systemSettingsSchema(true),
 		CreateContext: writeSystemSettings,
 		ReadContext:   readSystemSettings,
@@ -89,7 +89,7 @@ func resourceSystemSettings() *schema.Resource {
 
 func datasourceSystemSettings() *schema.Resource {
 	return &schema.Resource{
-		Description: "Read installation-wide Change Intelligence settings with a global administrator JWT.",
+		Description: "Read installation-wide Change Intelligence settings using an administrator JWT or, on IR 2.5.1+, an unrestricted administrator personal token with system-settings:read.",
 		Schema:      systemSettingsSchema(false),
 		ReadContext: readSystemSettings,
 	}

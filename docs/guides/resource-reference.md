@@ -144,6 +144,12 @@ For opt-in correlation and exclusion rules, see [Service](../resources/service.m
 Global administrators can also [manage selected installation-wide settings](../resources/system_settings.md)
 or [read current values](../data-sources/system_settings.md). The installation settings use import ID `1`.
 
+## Directory Sync (IR 2.5.1+)
+
+Directory Sync sources on IR 2.5.1 support import, configuration updates and
+periodic synchronization after a reviewed preview/apply in the IR UX.
+See [Directory Sync source](../resources/directory_sync_source.md).
+
 ## Event Orchestration
 
 ### `incidentrelay_event_orchestration`

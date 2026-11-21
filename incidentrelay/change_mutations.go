@@ -43,6 +43,9 @@ func (k changeKind) create(ctx context.Context, d *schema.ResourceData, meta int
 		for _, field := range []string{"owner_team_id", "source", "ordering_mode"} {
 			body[field] = d.Get(field)
 		}
+		if err := addGitLabMappings(d, body); err != nil {
+			return diag.FromErr(err)
+		}
 	} else {
 		path += fmt.Sprintf("/%d/grants", d.Get("source_id"))
 		for _, field := range []string{"target_team_id", "capability"} {
@@ -116,6 +119,11 @@ func (k changeKind) update(ctx context.Context, d *schema.ResourceData, meta int
 				v = nil
 			}
 			body[field] = v
+		}
+	}
+	if k == changeSource {
+		if err := addGitLabMappings(d, body); err != nil {
+			return diag.FromErr(err)
 		}
 	}
 	err := k.patch(ctx, d, meta.(*Config).Client, body, false)

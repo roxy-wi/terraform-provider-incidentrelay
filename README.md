@@ -17,6 +17,12 @@ Bearer tokens and username/password login.
 
 ## IncidentRelay Compatibility
 
+Provider v0.10.0 adds GitLab deployment mappings on
+[Change sources](docs/resources/change_source.md) and
+[Directory Sync sources](docs/resources/directory_sync_source.md) for IR 2.5.1.
+See the [IR 2.5.1 example](examples/incidentrelay-2.5.1/main.tf) and
+[personal API token scopes](docs/guides/authentication.md#personal-token-configuration).
+
 Provider v0.9.0 adds IR 2.5 [Change Integrations](docs/resources/change_integration.md),
 [sources](docs/resources/change_source.md), [grants](docs/resources/change_grant.md),
 and Service correlation settings. On builds that expose the corresponding APIs,
@@ -47,7 +53,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.8"
+      version = "~> 0.10"
     }
   }
 }
@@ -140,6 +146,7 @@ IncidentRelay instance with a self-signed certificate.
 - `incidentrelay_change_integration`
 - `incidentrelay_change_source`
 - `incidentrelay_change_grant`
+- `incidentrelay_directory_sync_source`
 - `incidentrelay_system_settings`
 - `incidentrelay_orchestration_webhook_action`
 - `incidentrelay_business_service`
@@ -252,9 +259,10 @@ make test-acc
 ```
 
 GitHub Actions also includes an `Acceptance` workflow that starts
-IncidentRelay with Docker and runs this test layer against IR 2.3, 2.4 and 2.5.
+IncidentRelay with Docker and runs this test layer against IR 2.3, 2.4, 2.5.0 and 2.5.1.
 The IR 2.3 job tries the `2.3` image, with source tag `v2.3.0` as a fallback;
-the other jobs build source tags `v2.4.0` and `v2.5.0`. See the
+the other jobs build source tags `v2.4.0`, `v2.5.0` and `v2.5.1`.
+IR 2.5.1 is tested with JWT and scoped personal tokens. See the
 [testing guide](docs/guides/testing-and-release.md) for details.
 
 ## Publishing to the Terraform Registry
@@ -275,8 +283,8 @@ Add the corresponding ASCII-armored public key in Terraform Registry settings fo
 the `roxy-wi` namespace. Then create and push a semver tag:
 
 ```sh
-git tag v0.9.0
-git push origin v0.9.0
+git tag v0.10.0
+git push origin v0.10.0
 ```
 
 After the GitHub release is published, use Terraform Registry's `Publish >

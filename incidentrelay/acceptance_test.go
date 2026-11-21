@@ -1728,6 +1728,10 @@ output "service_id" {
 		"TF_CLI_ARGS_apply=-parallelism=1",
 		"TF_CLI_ARGS_destroy=-parallelism=1",
 	)
+	if os.Getenv("INCIDENTRELAY_ACC_AUTH") == "personal" {
+		terraformEnv = append(terraformEnv, "INCIDENTRELAY_TOKEN="+config.Client.token,
+			"INCIDENTRELAY_USERNAME=", "INCIDENTRELAY_PASSWORD=")
+	}
 
 	t.Cleanup(func() {
 		result := testAccRunCommandResult(workDir, terraformEnv, terraformPath, "destroy", "-auto-approve", "-input=false", "-no-color")
@@ -1738,6 +1742,7 @@ output "service_id" {
 
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "validate", "-no-color")
 	testAccRunCommand(t, filepath.Join(repoRoot, "examples", "incidentrelay-2.5"), terraformEnv, terraformPath, "validate", "-no-color")
+	testAccRunCommand(t, filepath.Join(repoRoot, "examples", "incidentrelay-2.5.1"), terraformEnv, terraformPath, "validate", "-no-color")
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "import", "-input=false", "-no-color", "incidentrelay_group.cli", groupData.Id())
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "apply", "-auto-approve", "-input=false", "-no-color")
 
@@ -1791,6 +1796,9 @@ output "service_id" {
 		t.Run("system_settings", func(t *testing.T) {
 			testAccSystemSettingsCLI(t, config, workDir, terraformEnv, terraformPath)
 		})
+		t.Run("ir251", func(t *testing.T) {
+			testAcc251CLI(t, config, workDir, terraformEnv, terraformPath)
+		})
 	}
 }
 
@@ -1827,6 +1835,9 @@ func testAccProviderConfig(t *testing.T) *Config {
 	providerConfig, ok := config.(*Config)
 	if !ok {
 		t.Fatalf("provider config type = %T, want *Config", config)
+	}
+	if os.Getenv("INCIDENTRELAY_ACC_AUTH") == "personal" && token == "" {
+		providerConfig = testAccPersonalConfig(t, providerConfig)
 	}
 	return providerConfig
 }

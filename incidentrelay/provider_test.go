@@ -24,6 +24,7 @@ func TestProviderInternalValidate(t *testing.T) {
 		"incidentrelay_change_integration",
 		"incidentrelay_change_source",
 		"incidentrelay_change_grant",
+		"incidentrelay_directory_sync_source",
 		"incidentrelay_sso_provider",
 		"incidentrelay_sso_group_mapping",
 		"incidentrelay_team",
@@ -86,7 +87,7 @@ func TestCommonFieldLengthValidation(t *testing.T) {
 	checked := 0
 	for resourceName, resource := range Provider().ResourcesMap {
 		for fieldName, expectation := range expectations {
-			if resourceName == "incidentrelay_event_orchestration" || resourceName == "incidentrelay_orchestration_webhook_action" || resourceName == "incidentrelay_change_integration" {
+			if resourceName == "incidentrelay_event_orchestration" || resourceName == "incidentrelay_orchestration_webhook_action" || resourceName == "incidentrelay_change_integration" || resourceName == "incidentrelay_directory_sync_source" {
 				continue
 			}
 			field, ok := resource.Schema[fieldName]
@@ -136,6 +137,8 @@ func TestJSONFieldValidationRejectsInvalidJSON(t *testing.T) {
 					validJSON = `{"slack_user_id":"slack_id"}`
 				} else if fieldName == "rules_json" {
 					validJSON = `[]`
+				} else if resourceName == "incidentrelay_directory_sync_source" && fieldName == "config_json" {
+					validJSON = directoryTestConfig
 				}
 				if _, errors := validate(validJSON, fieldName); len(errors) > 0 {
 					t.Fatalf("valid JSON errors = %v", errors)

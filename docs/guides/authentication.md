@@ -95,19 +95,51 @@ administrator access to manage SSO providers and group mappings.
 
 ## Change Integrations (IR 2.5)
 
-The `/api/admin/change-integrations` endpoints require a JWT for a global
-administrator or an authorized Group `user_admin`. Set the login username and
-password so the provider obtains a JWT, or supply a valid JWT as the provider
-token. Group administrators can manage only integrations owned by their active
-Groups. Personal API tokens (even wildcard) cannot administer Change Integrations;
-machine tokens with `changes:ingest` are for event ingestion only.
+IR 2.5.0 uses a JWT for a global administrator or an authorized Group
+`user_admin`. Set the login username and password so the provider obtains a
+JWT, or supply a valid JWT as the provider token.
+
+IR 2.5.1+ also accepts personal API tokens with both
+`change-integrations:read` and `change-integrations:write`. The token owner
+must have the administrator role required for the integration. Group-bound
+tokens can manage integrations owned by that Group. Central integrations
+require a global administrator token without a Group or Team bound.
+Team-bound tokens are denied for integration administration.
+
+Change integration machine credentials with `changes:ingest` authenticate
+native Change Events and GitLab deployment ingestion. Use a JWT or personal
+API token for Terraform administration.
 
 ## System settings (IR 2.5)
 
-Reading or updating `/api/admin/system-settings` requires a global administrator
-JWT. Configure the provider with that administrator's username and password,
-or pass a valid JWT as its token. This applies to both the Terraform resource
-and the data source.
+IR 2.5.0 requires a global administrator JWT. On IR 2.5.1+, the resource also
+accepts that administrator's personal token with `system-settings:read` and
+`system-settings:write`. The data source needs only `system-settings:read`.
+System settings tokens must have no Group or Team bound.
+
+## Directory Sync (IR 2.5.1+)
+
+Use a global administrator or destination Group `user_admin`, authenticated
+by JWT or a personal token with `directory-sync:read` and
+`directory-sync:write`. A Group-bound token can manage that Group's sources.
+Use a token without a Team bound.
+
+## Personal token configuration
+
+```hcl
+provider "incidentrelay" {
+  base_url = var.incidentrelay_base_url
+  token    = var.incidentrelay_personal_token
+}
+```
+
+You can also set `INCIDENTRELAY_TOKEN`. The provider sends the credential as
+a Bearer token. Terraform refresh, import and revision checks require read
+scopes in addition to write scopes. Legacy `resources:read/write` scopes
+cover their established resource domains. Add the dedicated
+`change-integrations`, `system-settings` and `directory-sync` scopes for
+these administrative features. Server-side Group, Team and role restrictions
+apply to personal tokens on IR 2.5.1.
 
 ## Local Development With Self-Signed TLS
 

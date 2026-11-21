@@ -23,6 +23,7 @@ configuration and adapt.
   and AlertGroup reopen rules. Requires provider v0.8.0+ and IncidentRelay 2.4+.
 - [incidentrelay-2.5](incidentrelay-2.5/main.tf): Service correlation, a Google Cloud Monitoring route and Change Integration, source and grant. Requires provider v0.9.0+ and IncidentRelay 2.5.0+.
 - `sso`: OIDC provider configuration and external group mapping.
+- [incidentrelay-2.5.1](incidentrelay-2.5.1/main.tf) covers GitLab deployment mappings and a disabled Directory Sync source. Requires provider v0.10.0+ and IR 2.5.1+.
 - `data-sources`: looking up existing groups, teams, users, notification
   channels, services, rotations, incident priorities, escalation and
   notification policies, service match rules, and service version information.

@@ -7,7 +7,7 @@ description: |-
 
 # incidentrelay_change_grant
 
-Requires IR 2.5 and an [administrator JWT](../guides/authentication.md#change-integrations-ir-25).
+Requires IR 2.5 and administrator authentication. IR 2.5.1 also supports scoped personal API tokens. See the [authentication guide](../guides/authentication.md#change-integrations-ir-25).
 
 ```hcl
 resource "incidentrelay_change_grant" "deploy" {

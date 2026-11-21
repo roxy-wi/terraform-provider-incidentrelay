@@ -9,6 +9,7 @@ on:
       - "go.sum"
       - "incidentrelay/**"
       - "examples/incidentrelay-2.5/**"
+      - "examples/incidentrelay-2.5.1/**"
   push:
     branches:
       - main
@@ -18,6 +19,7 @@ on:
       - "go.sum"
       - "incidentrelay/**"
       - "examples/incidentrelay-2.5/**"
+      - "examples/incidentrelay-2.5.1/**"
 
 permissions:
   contents: read
@@ -41,6 +43,14 @@ jobs:
             # Build the final release, including system settings and Google Cloud Monitoring.
             image: ""
             ref: v2.5.0
+          - version: "2.5.1"
+            image: ""
+            ref: v2.5.1
+            auth: jwt
+          - version: "2.5.1"
+            image: ""
+            ref: v2.5.1
+            auth: personal
     env:
       INCIDENTRELAY_REMOTE_IMAGE: ${{ matrix.image }}
       INCIDENTRELAY_IMAGE: incidentrelay-acc:${{ matrix.version }}
@@ -50,6 +60,7 @@ jobs:
       INCIDENTRELAY_USERNAME: admin
       INCIDENTRELAY_PASSWORD: change-me-123
       INCIDENTRELAY_ACC: "1"
+      INCIDENTRELAY_ACC_AUTH: ${{ matrix.auth }}
       # This suite creates a disposable installation and restores the tested values.
       INCIDENTRELAY_ACC_SYSTEM_SETTINGS: "1"
     steps:

@@ -59,6 +59,7 @@ func Provider() *schema.Provider {
 			},
 		},
 		ResourcesMap: map[string]*schema.Resource{
+			"incidentrelay_directory_sync_source":        resourceDirectorySyncSource(),
 			"incidentrelay_group":                        resourceGroup(),
 			"incidentrelay_change_integration":           changeResource(changeIntegration),
 			"incidentrelay_system_settings":              resourceSystemSettings(),

@@ -2,6 +2,7 @@ package incidentrelay
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -37,6 +38,8 @@ func changeResource(k changeKind) *schema.Resource {
 		fields = append(fields, reqIntForceNew("integration_id", "Parent integration ID."),
 			reqInt("owner_team_id", "Owning Team."), reqString("source", "Producer namespace."),
 			optStringDefault("ordering_mode", "timestamp", "timestamp or sequence."),
+			fieldDef{Name: "gitlab_mappings_json", APIName: "gitlab_mappings", Kind: kindJSON, Optional: true, Computed: true, Description: "GitLab project/environment to Service mappings (IR 2.5.1+). Omit for UX management; use [] to clear."},
+			computedString("gitlab_webhook_path", "Native GitLab deployment webhook path (IR 2.5.1+)."),
 			computedBool("identity_editable", "Whether IR still allows changing the source name or Team."))
 	case changeGrant:
 		fields = append(fields, reqIntForceNew("integration_id", "Parent integration ID."), reqInt("source_id", "Source receiving this grant."),
@@ -61,18 +64,32 @@ func changeResource(k changeKind) *schema.Resource {
 	}
 	if k == changeSource {
 		s["ordering_mode"].ValidateFunc = validation.StringInSlice([]string{"timestamp", "sequence"}, false)
+		s["gitlab_mappings_json"].ValidateFunc = validateGitLabMappings
+		s["gitlab_mappings_json"].StateFunc = gitlabMappingsState
 	}
 	if k == changeGrant {
 		s["capability"].ValidateFunc = validation.StringInSlice([]string{"reference", "changed", "reported_affected"}, false)
 	}
 	return &schema.Resource{
-		Description:   "Manage an IncidentRelay 2.5 Change " + string(k) + ". Requires an administrator JWT.",
+		Description:   "Manage an IncidentRelay 2.5 Change " + string(k) + ". Use an administrator JWT or, on IR 2.5.1+, a scoped personal API token.",
 		Schema:        s,
 		CreateContext: k.create,
 		ReadContext:   k.read,
 		UpdateContext: k.update,
 		DeleteContext: k.remove,
 		CustomizeDiff: func(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
+			if k == changeSource && d.NewValueKnown("gitlab_mappings_json") && d.NewValueKnown("ordering_mode") {
+				raw, _ := d.Get("gitlab_mappings_json").(string)
+				if raw != "" {
+					mappings, err := parseGitLabMappings(raw)
+					if err != nil {
+						return err
+					}
+					if len(mappings) > 0 && d.Get("ordering_mode") != "timestamp" {
+						return fmt.Errorf("GitLab mappings require timestamp ordering")
+					}
+				}
+			}
 			if d.Id() == "" && d.NewValueKnown("active") && !d.Get("active").(bool) {
 				return fmt.Errorf("IR creates active Change objects only; import an existing object to manage it as inactive")
 			}
@@ -94,13 +111,15 @@ type integrationDetail struct {
 	Sources      []sourceDetail `json:"sources"`
 }
 type sourceDetail struct {
-	ID       int           `json:"id"`
-	Team     int           `json:"owner_team_id"`
-	Name     string        `json:"source"`
-	Active   *bool         `json:"active"`
-	Ordering string        `json:"ordering_mode"`
-	Editable bool          `json:"identity_editable"`
-	Grants   []grantDetail `json:"grants"`
+	GitLabMappings    json.RawMessage `json:"gitlab_mappings"`
+	GitLabWebhookPath string          `json:"gitlab_webhook_path"`
+	ID                int             `json:"id"`
+	Team              int             `json:"owner_team_id"`
+	Name              string          `json:"source"`
+	Active            *bool           `json:"active"`
+	Ordering          string          `json:"ordering_mode"`
+	Editable          bool            `json:"identity_editable"`
+	Grants            []grantDetail   `json:"grants"`
 }
 type grantDetail struct {
 	ID         int    `json:"id"`
@@ -187,7 +206,14 @@ func (k changeKind) save(d *schema.ResourceData, r integrationDetail) error {
 	case changeSource:
 		for _, s := range r.Sources {
 			if s.ID == id {
-				return setChangeState(d, map[string]interface{}{"owner_team_id": s.Team, "source": s.Name, "ordering_mode": s.Ordering, "active": *s.Active, "identity_editable": s.Editable})
+				mappings := string(s.GitLabMappings)
+				if mappings == "" {
+					mappings = "[]"
+				}
+				if _, err := parseGitLabMappings(mappings); err != nil {
+					return fmt.Errorf("invalid GitLab mappings response: %w", err)
+				}
+				return setChangeState(d, map[string]interface{}{"owner_team_id": s.Team, "source": s.Name, "ordering_mode": s.Ordering, "active": *s.Active, "identity_editable": s.Editable, "gitlab_mappings_json": gitlabMappingsState(mappings), "gitlab_webhook_path": s.GitLabWebhookPath})
 			}
 		}
 	case changeGrant:

@@ -65,10 +65,11 @@ components, priority policy rules, and service child resources.
 | `incidentrelay_notification_policy` | Policy ID | Direct read. |
 | `incidentrelay_notification_policy_rule` | Rule ID | Configure `policy_id` before import. |
 | `incidentrelay_service` | Service ID | Direct read. |
-| `incidentrelay_change_integration` | Integration ID | Uses an authorized administrator JWT. |
+| `incidentrelay_change_integration` | Integration ID | Uses administrator JWT or scoped personal token on IR 2.5.1+. |
 | `incidentrelay_change_source` | `integration_id/source_id` | Includes the automatically created initial source. |
 | `incidentrelay_change_grant` | `integration_id/source_id/grant_id` | Use the current parent source; inactive grants can also be imported. |
 | `incidentrelay_system_settings` | `1` | Installation-wide settings. Configure only the fields Terraform should manage. |
+| `incidentrelay_directory_sync_source` | Source ID | Match the effective configuration and enabled state. Omit headers to preserve stored credentials. Destroy disables the retained source. |
 | `incidentrelay_service_match_rule` | Rule ID | Configure `service_id` before import. |
 | `incidentrelay_service_link` | Link ID | Configure `service_id` before import. |
 | `incidentrelay_service_runbook` | Runbook ID | Configure `service_id` before import. |

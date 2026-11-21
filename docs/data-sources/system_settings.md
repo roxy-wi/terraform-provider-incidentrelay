@@ -8,8 +8,10 @@ description: |-
 # incidentrelay_system_settings
 
 Reads the same values a global administrator sees under **Administration → System
-settings**. Requires a global administrator JWT and an IR 2.5 build that exposes
-`/api/admin/system-settings`. The data source takes no arguments.
+settings**. Requires an IR 2.5 build that exposes `/api/admin/system-settings`
+and a global administrator JWT. IR 2.5.1+ also accepts an unrestricted global
+administrator personal API token with `system-settings:read`.
+The data source takes no arguments.
 
 ```hcl
 data "incidentrelay_system_settings" "current" {}

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0 - 2026-11-21
+
+- Add GitLab deployment mappings and the native webhook path to Change sources, with timestamp ordering validation and preservation of UX-managed mappings.
+- Manage Directory Sync sources with import, revision-checked updates, write-only headers and disable-on-destroy. Preview/apply remains an explicit step in the IR UX before periodic synchronization is enabled.
+- Document personal API token roles and scopes introduced in IR 2.5.1.
+- Extend acceptance CI to IR 2.5.1 with JWT and scoped personal API token authentication, retaining IR 2.3, 2.4 and 2.5.0 coverage.
+
 ## 0.9.0 - 2026-11-08
 
 - Manage Change Integrations, source namespaces and scoped grants with revision-checked updates, import and deactivation on destroy.

@@ -37,7 +37,7 @@ locally built provider binary through Terraform's development override
 mechanism. That test covers `terraform validate`, `import`, `apply`,
 idempotent `plan -detailed-exitcode`, and `destroy`.
 
-The acceptance matrix exercises three IR versions:
+The acceptance matrix exercises four IR versions:
 
 - IR 2.3 first pulls `ghcr.io/roxy-wi/incidentrelay:2.3` anonymously, then retries
   with GHCR authentication and falls back to building source tag `v2.3.0`.
@@ -48,6 +48,12 @@ The acceptance matrix exercises three IR versions:
   settings. It also exercises the Google Cloud Monitoring route lifecycle
   and the system settings resource and data source, including import, managed
   drift, simultaneous UX edits to omitted fields, and destroy.
+- IR 2.5.1 builds source tag `v2.5.1` twice, using JWT and scoped personal API
+  tokens. The CLI checks GitLab mappings, webhook paths, import, omitted-field
+  preservation and clearing. Directory Sync covers server defaults, credential
+  preservation, import, rename, unapproved activation, stale revisions and
+  disabling on destroy. Restricted-token tests cover read-only and missing
+  administrative scopes.
 
 The 2.4-specific tests skip on older servers. On IR 2.4+, they cover OpenSearch
 and Kibana routes; legacy, assignee, fallback and fixed email configurations;
@@ -78,7 +84,13 @@ and set `INCIDENTRELAY_EXPECTED_VERSION=2.5` and
 intake and the future timestamp limit, then restores their original values.
 The acceptance workflow enables this flag for its disposable instances.
 
-The release workflow runs on semver tags such as `v0.9.0`. It builds
+Set `INCIDENTRELAY_ACC_AUTH=personal` on a disposable IR 2.5.1 instance to run
+acceptance using scoped personal tokens. Provide the temporary administrator
+username/password to bootstrap and revoke the test tokens. Terraform CLI then
+receives only the issued token. Preview/apply of external directory data is
+performed separately in the IR UX.
+
+The release workflow runs on semver tags such as `v0.10.0`. It builds
 Registry-compatible zip assets, attaches the Terraform Registry manifest,
 generates SHA256 checksums, and signs the checksum file with GPG.
 
@@ -86,7 +98,7 @@ generates SHA256 checksums, and signs the checksum file with GPG.
 
 1. Ensure CI is green on `main`.
 2. Update documentation and examples for new resources or fields.
-3. Create the next semver tag, for example `v0.9.0`.
+3. Create the next semver tag, for example `v0.10.0`.
 4. Push the tag.
 5. Verify GitHub Release assets:
    - platform zip files

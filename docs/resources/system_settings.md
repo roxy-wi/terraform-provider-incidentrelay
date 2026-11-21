@@ -8,7 +8,9 @@ description: |-
 # incidentrelay_system_settings
 
 Manages the settings shown under **Administration → System settings**. Requires an
-IR 2.5 build with `/api/admin/system-settings` and a global administrator JWT.
+IR 2.5 build with `/api/admin/system-settings` and a global administrator JWT,
+or IR 2.5.1+ with an unrestricted global administrator personal API token with
+`system-settings:read` and `system-settings:write`.
 The values apply to every Group in the installation.
 
 ```hcl

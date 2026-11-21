@@ -7,7 +7,7 @@ description: |-
 
 # incidentrelay_change_integration
 
-Requires IR 2.5 and an [administrator JWT](../guides/authentication.md#change-integrations-ir-25). The integration identifies a producer of Change Events. IR creates its first source automatically, with no grants. Use `initial_source_id` when granting it permissions.
+Requires IR 2.5 and administrator authentication. IR 2.5.1 also supports scoped personal API tokens. The integration identifies a producer of Change Events. IR creates its first source automatically, with no grants. Use `initial_source_id` when granting it permissions. See the [authentication guide](../guides/authentication.md#change-integrations-ir-25).
 
 ```hcl
 resource "incidentrelay_change_integration" "pipeline" {
