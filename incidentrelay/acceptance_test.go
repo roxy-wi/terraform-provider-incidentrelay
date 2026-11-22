@@ -1743,6 +1743,7 @@ output "service_id" {
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "validate", "-no-color")
 	testAccRunCommand(t, filepath.Join(repoRoot, "examples", "incidentrelay-2.5"), terraformEnv, terraformPath, "validate", "-no-color")
 	testAccRunCommand(t, filepath.Join(repoRoot, "examples", "incidentrelay-2.5.1"), terraformEnv, terraformPath, "validate", "-no-color")
+	testAccRunCommand(t, filepath.Join(repoRoot, "examples", "incidentrelay-2.5.2"), terraformEnv, terraformPath, "validate", "-no-color")
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "import", "-input=false", "-no-color", "incidentrelay_group.cli", groupData.Id())
 	testAccRunCommand(t, workDir, terraformEnv, terraformPath, "apply", "-auto-approve", "-input=false", "-no-color")
 
@@ -1798,6 +1799,9 @@ output "service_id" {
 		})
 		t.Run("ir251", func(t *testing.T) {
 			testAcc251CLI(t, config, workDir, terraformEnv, terraformPath)
+		})
+		t.Run("ir252", func(t *testing.T) {
+			testAcc252CLI(t, config, workDir, terraformEnv, terraformPath)
 		})
 	}
 }

@@ -16,6 +16,10 @@ The provider communicates with the IncidentRelay HTTP API. Use token
 authentication for automation and username/password authentication for local
 development or bootstrap workflows.
 
+Provider v0.11.0 adds [IR 2.5.2 synchronization support](guides/incidentrelay-2.5.2.md),
+including Jira CMDB, current-duty settings and explicit source deletion.
+These additions require provider v0.11.0 or later.
+
 Provider v0.10.0 adds IR 2.5.1 [GitLab deployment mappings](resources/change_source.md#gitlab-deployments-ir-251)
 and [Directory Sync sources](resources/directory_sync_source.md).
 These features require provider v0.10.0 or later.
@@ -29,7 +33,8 @@ These features require provider v0.9.0 or later.
 
 Provider v0.8.0 adds IR 2.4 OpenSearch/Kibana routes, email
 recipient modes, and Event Orchestration AlertGroup reopen configuration.
-Acceptance CI covers IR 2.3, 2.4, 2.5.0 and 2.5.1, including personal tokens on 2.5.1.
+Acceptance CI covers IR 2.3, 2.4, 2.5.0, 2.5.1 and 2.5.2,
+including personal tokens on 2.5.1 and 2.5.2.
 Earlier route sources, notification-policy filters,
 Slack/Feishu/Lark channels, and SSO configuration remain supported.
 
@@ -40,7 +45,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.10"
+      version = "~> 0.11"
     }
   }
 }

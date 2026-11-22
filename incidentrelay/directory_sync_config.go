@@ -3,7 +3,10 @@ package incidentrelay
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
+
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 // Defaults mirror IR 2.5.1 SyncConfig, Operation and Pagination. Normalizing
@@ -12,6 +15,23 @@ func normalizeDirectoryConfig(raw string) (string, error) {
 	var config map[string]interface{}
 	if err := json.Unmarshal([]byte(raw), &config); err != nil || config == nil {
 		return "", fmt.Errorf("config_json must be a JSON object")
+	}
+	if sourceType, exists := config["source_type"]; exists {
+		if sourceType != "jira_assets" {
+			return "", fmt.Errorf("config_json source_type must be jira_assets, or omitted for Directory Sync")
+		}
+		return normalizeCMDBConfig(config)
+	}
+	if value, exists := config["current_enabled"]; exists {
+		if _, ok := value.(bool); !ok {
+			return "", fmt.Errorf("current_enabled must be a JSON boolean")
+		}
+	}
+	if value := config["retained_source_id"]; value != nil {
+		id, ok := value.(float64)
+		if !ok || id < 1 || math.Trunc(id) != id {
+			return "", fmt.Errorf("retained_source_id must be a positive integer or null")
+		}
 	}
 	defaults := map[string]interface{}{
 		"private_network_policy": "deny", "verify_tls": true,
@@ -82,6 +102,39 @@ func normalizeDirectoryConfig(raw string) (string, error) {
 	}
 	result, err := json.Marshal(config)
 	return string(result), err
+}
+
+func syncConfigType(raw string) string {
+	var config struct {
+		SourceType string `json:"source_type"`
+	}
+	if json.Unmarshal([]byte(raw), &config) == nil && config.SourceType == "jira_assets" {
+		return "jira_assets"
+	}
+	return "directory"
+}
+
+func suppressEquivalentSyncConfig(_ string, old, next string, _ *schema.ResourceData) bool {
+	normalize := func(raw string) (string, error) {
+		normalized, err := normalizeDirectoryConfig(raw)
+		if err != nil {
+			return "", err
+		}
+		var config map[string]interface{}
+		if err := json.Unmarshal([]byte(normalized), &config); err != nil {
+			return "", err
+		}
+		if syncConfigType(normalized) == "directory" {
+			// Compare server-added 2.5.2 defaults without sending unsupported keys
+			// in payloads to IR 2.5.1. Explicit non-default values still cause drift.
+			directoryDefaults(config, map[string]interface{}{"current_enabled": true, "retained_source_id": nil})
+		}
+		result, err := json.Marshal(config)
+		return string(result), err
+	}
+	oldConfig, oldErr := normalize(old)
+	newConfig, newErr := normalize(next)
+	return oldErr == nil && newErr == nil && oldConfig == newConfig
 }
 
 func directoryDefaults(object, defaults map[string]interface{}) {

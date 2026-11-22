@@ -53,6 +53,8 @@ func testAcc251CLI(t *testing.T, config *Config, dir string, env []string, tf st
 	if _, exists := paths[directorySyncPath]; !exists {
 		t.Skip("requires IR 2.5.1 Directory Sync API")
 	}
+	detailPath, _ := paths[directorySyncPath+"/{source_id}"].(map[string]interface{})
+	_, supports252 := detailPath["delete"]
 	run := func(args ...string) string {
 		t.Helper()
 		return strings.TrimSpace(testAccRunCommand(t, dir, env, tf, args...))
@@ -135,19 +137,29 @@ output "directory_source_id" { value = incidentrelay_directory_sync_source.direc
 		t.Fatal("rename lost headers")
 	}
 	noDiff()
-	// An unapproved configuration cannot be enabled. The failed update must keep
-	// its state binding so a later reviewed retry updates the same source.
+	// IR 2.5.1 rejects an unapproved enable and must retain its binding.
+	// IR 2.5.2 records the request but keeps the schedule pending UX approval.
 	invalid := strings.Replace(fixture, `name = "Directory renamed"`, `name = "Directory renamed"
  enabled = true`, 1)
 	save(invalid)
 	result := testAccRunCommandResult(dir, env, tf, "apply", "-input=false", "-auto-approve", "-no-color")
-	if result.ExitCode == 0 || !strings.Contains(result.Output, "409") {
-		t.Fatalf("expected unapproved enable to fail: %s", result.Output)
+	if supports252 {
+		if result.ExitCode != 0 {
+			t.Fatalf("pending approval schedule failed: %s", result.Output)
+		}
+		if live := getDirectory(); live.ScheduleState != "pending_approval" || live.Approved {
+			t.Fatal("IR 2.5.2 must defer synchronization until UX approval")
+		}
+	} else if result.ExitCode == 0 || !strings.Contains(result.Output, "409") {
+		t.Fatalf("expected IR 2.5.1 unapproved enable to fail: %s", result.Output)
 	}
 	if run("output", "-raw", "directory_source_id") != directory {
 		t.Fatal("failed enable lost identity")
 	}
 	save(fixture)
+	if supports252 {
+		apply()
+	}
 	noDiff()
 	// A changed revision after plan must not be overwritten by Terraform.
 	planned := strings.Replace(fixture, `name = "Directory renamed"`, `name = "Planned rename"`, 1)

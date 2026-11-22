@@ -10,6 +10,7 @@ on:
       - "incidentrelay/**"
       - "examples/incidentrelay-2.5/**"
       - "examples/incidentrelay-2.5.1/**"
+      - "examples/incidentrelay-2.5.2/**"
   push:
     branches:
       - main
@@ -20,6 +21,7 @@ on:
       - "incidentrelay/**"
       - "examples/incidentrelay-2.5/**"
       - "examples/incidentrelay-2.5.1/**"
+      - "examples/incidentrelay-2.5.2/**"
 
 permissions:
   contents: read
@@ -50,6 +52,14 @@ jobs:
           - version: "2.5.1"
             image: ""
             ref: v2.5.1
+            auth: personal
+          - version: "2.5.2"
+            image: ""
+            ref: v2.5.2
+            auth: jwt
+          - version: "2.5.2"
+            image: ""
+            ref: v2.5.2
             auth: personal
     env:
       INCIDENTRELAY_REMOTE_IMAGE: ${{ matrix.image }}

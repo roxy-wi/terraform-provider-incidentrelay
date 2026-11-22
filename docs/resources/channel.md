@@ -7,6 +7,12 @@ description: |-
 
 # incidentrelay_channel
 
+The provider manages team-owned channels. On IR 2.5.2, channel access is
+checked against the current owner; moving a channel requires write access
+to both its current and destination Teams. A team-owned channel cannot be
+detached. Legacy group-only channels require Group editor/administrator access
+even for reads, and Team-bound tokens cannot access them.
+
 ```hcl
 resource "incidentrelay_channel" "email" {
   team_id      = incidentrelay_team.platform.id

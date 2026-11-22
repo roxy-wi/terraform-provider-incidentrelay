@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0 - 2026-11-22
+
+- Support Jira Assets/Insight CMDB configuration through `incidentrelay_directory_sync_source`, including field selection, ownership mappings, relationships and server defaults.
+- Support IR 2.5.2 current-duty settings and retained-source reconnection without introducing default-only drift or sending new fields to IR 2.5.1.
+- Allow IR to hold requested schedules pending UX approval; expose schedule state, current-duty errors and next execution times.
+- Add explicit source deletion modes with planned-revision checks. Destroy continues to disable sources by default.
+- Extend acceptance CI with JWT and personal token coverage for the final IR 2.5.2 release, retaining older versions.
+
 ## 0.10.0 - 2026-11-21
 
 - Add GitLab deployment mappings and the native webhook path to Change sources, with timestamp ordering validation and preservation of UX-managed mappings.

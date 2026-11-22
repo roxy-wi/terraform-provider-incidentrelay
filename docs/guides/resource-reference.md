@@ -149,6 +149,8 @@ or [read current values](../data-sources/system_settings.md). The installation s
 Directory Sync sources on IR 2.5.1 support import, configuration updates and
 periodic synchronization after a reviewed preview/apply in the IR UX.
 See [Directory Sync source](../resources/directory_sync_source.md).
+IR 2.5.2 also supports Jira CMDB through this resource; see the
+[IR 2.5.2 guide](incidentrelay-2.5.2.md).
 
 ## Event Orchestration
 

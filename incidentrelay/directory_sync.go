@@ -16,17 +16,22 @@ import (
 const directorySyncPath = "/api/admin/directory-sync"
 
 type directorySyncDetail struct {
-	ID          int             `json:"id"`
-	Name        string          `json:"name"`
-	GroupID     int             `json:"group_id"`
-	Config      json.RawMessage `json:"config"`
-	Enabled     *bool           `json:"enabled"`
-	Revision    int             `json:"revision"`
-	Approved    bool            `json:"approved"`
-	HasHeaders  bool            `json:"has_headers"`
-	Running     bool            `json:"running"`
-	PendingMode string          `json:"pending_mode"`
-	LastError   string          `json:"last_error"`
+	ID             int             `json:"id"`
+	Name           string          `json:"name"`
+	GroupID        int             `json:"group_id"`
+	Config         json.RawMessage `json:"config"`
+	Enabled        *bool           `json:"enabled"`
+	Revision       int             `json:"revision"`
+	Approved       bool            `json:"approved"`
+	HasHeaders     bool            `json:"has_headers"`
+	Running        bool            `json:"running"`
+	PendingMode    string          `json:"pending_mode"`
+	LastError      string          `json:"last_error"`
+	ScheduleState  string          `json:"schedule_state"`
+	CurrentError   string          `json:"current_error"`
+	CurrentRunning bool            `json:"current_running"`
+	NextRunAt      string          `json:"next_run_at"`
+	NextCurrentAt  string          `json:"next_current_at"`
 }
 
 func resourceDirectorySyncSource() *schema.Resource {
@@ -35,7 +40,14 @@ func resourceDirectorySyncSource() *schema.Resource {
 		reqIntForceNew("group_id", "Destination Group. Immutable after creation."),
 		reqJSON("config_json", "config", "Directory Sync configuration JSON. IR adds defaults to omitted settings."),
 		{Name: "headers_json", Kind: kindJSON, Optional: true, Computed: true, Sensitive: true, Description: "Write-only HTTP authentication headers. Omit to preserve; use {} to clear."},
-		optBoolDefault("enabled", false, "Enable periodic sync after applying a preview in IR. Create disabled first."),
+		optBoolDefault("enabled", false, "Request periodic sync. IR 2.5.2+ waits for preview/apply approval before running."),
+		optStringDefault("destroy_behavior", "disable", "disable (default), delete_keep_data, or delete_with_data. Deletion requires IR 2.5.2+."),
+		computedString("source_type", "directory or jira_assets."),
+		computedString("schedule_state", "disabled, pending_approval, preview, or enabled (IR 2.5.2+)."),
+		computedString("current_error", "Last current-duty refresh error (IR 2.5.2+)."),
+		computedBool("current_running", "Whether current-duty refresh is running (IR 2.5.2+)."),
+		computedString("next_run_at", "Next scheduled import in UTC, or empty when unscheduled (IR 2.5.2+)."),
+		computedString("next_current_at", "Next current-duty refresh in UTC, or empty when unscheduled (IR 2.5.2+)."),
 		computedInt("revision", "Current configuration revision."),
 		computedBool("approved", "Whether this revision has been approved through preview/apply."),
 		computedBool("has_headers", "Whether the server stores encrypted headers."),
@@ -52,6 +64,9 @@ func resourceDirectorySyncSource() *schema.Resource {
 	}
 	fields["config_json"].StateFunc = directoryConfigState
 	fields["config_json"].ValidateFunc = validateDirectoryConfig
+	fields["config_json"].DiffSuppressFunc = suppressEquivalentSyncConfig
+	fields["config_json"].DiffSuppressOnRefresh = true
+	fields["destroy_behavior"].ValidateFunc = validation.StringInSlice([]string{"disable", "delete_keep_data", "delete_with_data"}, false)
 	fields["headers_json"].ValidateFunc = func(value interface{}, key string) ([]string, []error) {
 		if _, err := directoryHeaders(value.(string)); err != nil {
 			return nil, []error{err}
@@ -59,28 +74,18 @@ func resourceDirectorySyncSource() *schema.Resource {
 		return nil, nil
 	}
 	return &schema.Resource{
-		Description:   "Manage an IR 2.5.1 Directory Sync source. Preview/apply is performed in IR. Destroy disables periodic sync.",
+		Description:   "Manage Directory Sync (IR 2.5.1+) or Jira CMDB (IR 2.5.2+). Preview/apply is performed in IR. Destroy disables periodic sync by default.",
 		Schema:        fields,
 		CreateContext: createDirectorySyncSource,
 		ReadContext:   readDirectorySyncSource,
 		UpdateContext: updateDirectorySyncSource,
 		DeleteContext: deleteDirectorySyncSource,
 		CustomizeDiff: func(_ context.Context, d *schema.ResourceDiff, _ interface{}) error {
-			if d.Id() == "" && d.NewValueKnown("enabled") && d.Get("enabled").(bool) {
-				return fmt.Errorf("create Directory Sync disabled, review and apply a preview in IR, then set enabled = true")
-			}
-			configChanged := false
 			if d.Id() != "" && d.NewValueKnown("config_json") {
 				oldValue, newValue := d.GetChange("config_json")
-				oldConfig, oldError := normalizeDirectoryConfig(oldValue.(string))
-				newConfig, newError := normalizeDirectoryConfig(newValue.(string))
-				configChanged = oldError != nil || newError != nil || oldConfig != newConfig
-			}
-			raw := d.GetRawConfig()
-			headersConfigured := !raw.IsNull() && raw.IsKnown() && !raw.GetAttr("headers_json").IsNull()
-			headersChanged := headersConfigured && d.NewValueKnown("headers_json") && d.HasChange("headers_json")
-			if d.Id() != "" && d.NewValueKnown("enabled") && d.Get("enabled").(bool) && (configChanged || headersChanged) {
-				return fmt.Errorf("set enabled = false when changing Directory Sync configuration or headers; apply a new preview in IR before enabling")
+				if syncConfigType(oldValue.(string)) != syncConfigType(newValue.(string)) {
+					return d.ForceNew("config_json")
+				}
 			}
 			return nil
 		},
@@ -117,11 +122,21 @@ func saveDirectorySync(d *schema.ResourceData, result directorySyncDetail) error
 	if err != nil {
 		return err
 	}
+	// This local lifecycle setting is absent in imported and v0.10.0 state.
+	// Its safe default must not produce a plan change or fall through to DELETE.
+	if d.Get("destroy_behavior").(string) == "" {
+		if err := d.Set("destroy_behavior", "disable"); err != nil {
+			return err
+		}
+	}
 	return setChangeState(d, map[string]interface{}{
 		"name": result.Name, "group_id": result.GroupID, "config_json": config,
 		"enabled": *result.Enabled, "revision": result.Revision, "approved": result.Approved,
 		"has_headers": result.HasHeaders, "running": result.Running,
 		"pending_mode": result.PendingMode, "last_error": result.LastError,
+		"source_type": syncConfigType(config), "schedule_state": result.ScheduleState,
+		"current_error": result.CurrentError, "current_running": result.CurrentRunning,
+		"next_run_at": result.NextRunAt, "next_current_at": result.NextCurrentAt,
 	})
 }
 
@@ -160,9 +175,6 @@ func directorySyncBody(d *schema.ResourceData, create bool) (map[string]interfac
 }
 
 func createDirectorySyncSource(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	if d.Get("enabled").(bool) {
-		return diag.Errorf("create Directory Sync disabled, then apply a preview in IR before enabling")
-	}
 	body, err := directorySyncBody(d, true)
 	if err != nil {
 		return diag.FromErr(err)
@@ -180,6 +192,13 @@ func createDirectorySyncSource(ctx context.Context, d *schema.ResourceData, meta
 }
 
 func updateDirectorySyncSource(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	remoteChanged := false
+	for _, field := range []string{"name", "config_json", "headers_json", "enabled"} {
+		remoteChanged = remoteChanged || d.HasChange(field)
+	}
+	if !remoteChanged {
+		return nil
+	}
 	body, err := directorySyncBody(d, false)
 	if err != nil {
 		return diag.FromErr(err)
@@ -199,6 +218,9 @@ func updateDirectorySyncSource(ctx context.Context, d *schema.ResourceData, meta
 
 func deleteDirectorySyncSource(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	client := meta.(*Config).Client
+	if behavior := d.Get("destroy_behavior").(string); behavior != "" && behavior != "disable" {
+		return removeDirectorySyncSource(ctx, d, client, behavior)
+	}
 	current, err := getDirectorySync(ctx, client, d.Id())
 	if errors.Is(err, ErrNotFound) {
 		d.SetId("")
@@ -222,6 +244,35 @@ func deleteDirectorySyncSource(ctx context.Context, d *schema.ResourceData, meta
 	}
 	if after.ID != current.ID || *after.Enabled {
 		return diag.Errorf("IR did not disable the Directory Sync source")
+	}
+	d.SetId("")
+	return nil
+}
+
+func removeDirectorySyncSource(ctx context.Context, d *schema.ResourceData, client *Client, behavior string) diag.Diagnostics {
+	action := "keep"
+	if behavior == "delete_with_data" {
+		action = "delete"
+	} else if behavior != "delete_keep_data" {
+		return diag.Errorf("unsupported Directory Sync destroy_behavior")
+	}
+	var result struct {
+		ID      int  `json:"id"`
+		Deleted bool `json:"deleted"`
+	}
+	// Delete only the revision reviewed in the destroy plan. Never retry with a
+	// newly fetched revision: it could describe different imported objects.
+	err := client.Do(ctx, http.MethodDelete, directorySyncPath+"/"+d.Id(),
+		map[string]interface{}{"revision": d.Get("revision"), "data_action": action}, &result)
+	if errors.Is(err, ErrNotFound) {
+		d.SetId("")
+		return nil
+	}
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if strconv.Itoa(result.ID) != d.Id() || !result.Deleted {
+		return diag.Errorf("IR did not confirm deletion of the Directory Sync source")
 	}
 	d.SetId("")
 	return nil

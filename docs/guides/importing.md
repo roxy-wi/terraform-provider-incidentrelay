@@ -69,7 +69,7 @@ components, priority policy rules, and service child resources.
 | `incidentrelay_change_source` | `integration_id/source_id` | Includes the automatically created initial source. |
 | `incidentrelay_change_grant` | `integration_id/source_id/grant_id` | Use the current parent source; inactive grants can also be imported. |
 | `incidentrelay_system_settings` | `1` | Installation-wide settings. Configure only the fields Terraform should manage. |
-| `incidentrelay_directory_sync_source` | Source ID | Match the effective configuration and enabled state. Omit headers to preserve stored credentials. Destroy disables the retained source. |
+| `incidentrelay_directory_sync_source` | Source ID | Directory or Jira CMDB source. Match configuration and enabled state; omit headers to preserve credentials. Destroy disables by default; 2.5.2 adds explicit deletion modes. |
 | `incidentrelay_service_match_rule` | Rule ID | Configure `service_id` before import. |
 | `incidentrelay_service_link` | Link ID | Configure `service_id` before import. |
 | `incidentrelay_service_runbook` | Runbook ID | Configure `service_id` before import. |

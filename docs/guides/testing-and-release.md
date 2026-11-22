@@ -37,7 +37,7 @@ locally built provider binary through Terraform's development override
 mechanism. That test covers `terraform validate`, `import`, `apply`,
 idempotent `plan -detailed-exitcode`, and `destroy`.
 
-The acceptance matrix exercises four IR versions:
+The acceptance matrix exercises five IR versions in seven jobs:
 
 - IR 2.3 first pulls `ghcr.io/roxy-wi/incidentrelay:2.3` anonymously, then retries
   with GHCR authentication and falls back to building source tag `v2.3.0`.
@@ -54,6 +54,11 @@ The acceptance matrix exercises four IR versions:
   preservation, import, rename, unapproved activation, stale revisions and
   disabling on destroy. Restricted-token tests cover read-only and missing
   administrative scopes.
+- IR 2.5.2 builds the final source tag `v2.5.2` with JWT and scoped personal tokens.
+  Tests cover CMDB creation/import,
+  current-duty settings, default normalization, source-type replacement plans,
+  pending approval, stale-revision deletion and both explicit deletion modes.
+  External preview/apply execution remains in IR UX.
 
 The 2.4-specific tests skip on older servers. On IR 2.4+, they cover OpenSearch
 and Kibana routes; legacy, assignee, fallback and fixed email configurations;
@@ -90,7 +95,7 @@ username/password to bootstrap and revoke the test tokens. Terraform CLI then
 receives only the issued token. Preview/apply of external directory data is
 performed separately in the IR UX.
 
-The release workflow runs on semver tags such as `v0.10.0`. It builds
+The release workflow runs on semver tags such as `v0.11.0`. It builds
 Registry-compatible zip assets, attaches the Terraform Registry manifest,
 generates SHA256 checksums, and signs the checksum file with GPG.
 
@@ -98,7 +103,7 @@ generates SHA256 checksums, and signs the checksum file with GPG.
 
 1. Ensure CI is green on `main`.
 2. Update documentation and examples for new resources or fields.
-3. Create the next semver tag, for example `v0.10.0`.
+3. Create the next semver tag, for example `v0.11.0`.
 4. Push the tag.
 5. Verify GitHub Release assets:
    - platform zip files

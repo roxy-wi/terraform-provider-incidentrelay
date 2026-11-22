@@ -17,6 +17,11 @@ Bearer tokens and username/password login.
 
 ## IncidentRelay Compatibility
 
+Provider v0.11.0 adds IR 2.5.2 Jira CMDB sources, current-duty settings,
+sync schedule status and explicit source deletion modes. See the
+[IR 2.5.2 guide](docs/guides/incidentrelay-2.5.2.md) and
+[example](examples/incidentrelay-2.5.2/main.tf).
+
 Provider v0.10.0 adds GitLab deployment mappings on
 [Change sources](docs/resources/change_source.md) and
 [Directory Sync sources](docs/resources/directory_sync_source.md) for IR 2.5.1.
@@ -53,7 +58,7 @@ terraform {
   required_providers {
     incidentrelay = {
       source  = "roxy-wi/incidentrelay"
-      version = "~> 0.10"
+      version = "~> 0.11"
     }
   }
 }
@@ -259,10 +264,10 @@ make test-acc
 ```
 
 GitHub Actions also includes an `Acceptance` workflow that starts
-IncidentRelay with Docker and runs this test layer against IR 2.3, 2.4, 2.5.0 and 2.5.1.
+IncidentRelay with Docker and runs this test layer against IR 2.3, 2.4, 2.5.0, 2.5.1 and 2.5.2.
 The IR 2.3 job tries the `2.3` image, with source tag `v2.3.0` as a fallback;
-the other jobs build source tags `v2.4.0`, `v2.5.0` and `v2.5.1`.
-IR 2.5.1 is tested with JWT and scoped personal tokens. See the
+the other jobs build source tags `v2.4.0`, `v2.5.0`, `v2.5.1` and `v2.5.2`.
+IR 2.5.1 and 2.5.2 are tested with JWT and scoped personal tokens. See the
 [testing guide](docs/guides/testing-and-release.md) for details.
 
 ## Publishing to the Terraform Registry
@@ -283,8 +288,8 @@ Add the corresponding ASCII-armored public key in Terraform Registry settings fo
 the `roxy-wi` namespace. Then create and push a semver tag:
 
 ```sh
-git tag v0.10.0
-git push origin v0.10.0
+git tag v0.11.0
+git push origin v0.11.0
 ```
 
 After the GitHub release is published, use Terraform Registry's `Publish >

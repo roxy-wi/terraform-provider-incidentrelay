@@ -124,6 +124,10 @@ by JWT or a personal token with `directory-sync:read` and
 `directory-sync:write`. A Group-bound token can manage that Group's sources.
 Use a token without a Team bound.
 
+The same `directory-sync` scopes cover Jira CMDB configuration and source
+deletion on IR 2.5.2. The Jira PAT belongs in the source's sensitive
+`headers_json`, separately from the IR token used by the provider.
+
 ## Personal token configuration
 
 ```hcl

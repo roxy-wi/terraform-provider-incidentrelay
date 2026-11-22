@@ -120,6 +120,10 @@ func TestDirectorySyncCredentialsAndDestroy(t *testing.T) {
 	remote.Name = "Changed through UX"
 	remote.Config = json.RawMessage(strings.Replace(config, `"interval_seconds":3600`, `"interval_seconds":120`, 1))
 	enabled = true
+	// A destroy without refresh can still see state written by provider v0.10.0.
+	if err := imported.Set("destroy_behavior", ""); err != nil {
+		t.Fatal(err)
+	}
 	if diags := resource.DeleteContext(ctx, imported, client); diags.HasError() {
 		t.Fatal(diags)
 	}
